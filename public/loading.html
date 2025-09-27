@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hookify Loading</title>
+<style>
+  /* Basic setup */
+  body {
+    margin: 0;
+    height: 100vh;
+    background-color: #041d56;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+  }
+
+  /* Hookify heading */
+  .hookify-heading {
+    font-family: 'Pacifico', cursive; /* cursive style */
+    color: #90e0ef;
+    font-size: 48px;
+    margin-bottom: 30px;
+  }
+
+  /* Card */
+  .loading-card {
+    background-color: #08306b;
+    border-radius: 25px;
+    padding: 40px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+  }
+
+  .loading-card:hover {
+    box-shadow: 0 0 20px #90e0ef;
+    transform: translateY(-5px);
+  }
+
+  /* Logo */
+  .mini-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    border: 2px solid #90e0ef;
+    object-fit: cover;
+    transition: all 0.3s ease;
+  }
+
+  .mini-logo:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px #90e0ef;
+  }
+
+  /* Tabs */
+  .tab-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .tab-buttons button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 999px;
+    border: none;
+    background-color: #08306b;
+    color: #aaa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .tab-buttons button.active {
+    background-color: #90e0ef;
+    color: #041d56;
+    box-shadow: 0 0 10px #90e0ef;
+  }
+
+  /* Loader */
+  .loader {
+    width: 100%;
+    height: 12px;
+    background-color: #112d44;
+    border-radius: 999px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+
+  .loader span {
+    position: absolute;
+    left: -40px;
+    top: 0;
+    height: 12px;
+    width: 40px;
+    background-color: #90e0ef;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: slide 2s linear infinite;
+  }
+
+  .loader span::after {
+    content: "🎵";
+    margin-left: 5px;
+    font-size: 14px;
+  }
+
+  @keyframes slide {
+    0% { left: -40px; }
+    100% { left: 100%; }
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="hookify-heading">Hookify</div>
+
+  <div class="loading-card">
+    <img src="Elephant_Beats.jpeg" alt="Hookify Logo" class="mini-logo">
+
+    <div class="tab-buttons">
+      <button class="active" id="login-tab">Login</button>
+      <button id="signup-tab">Signup</button>
+    </div>
+
+    <div class="loader">
+      <span></span>
+    </div>
+  </div>
+
+<script>
+  // Tab switching logic (just visual on loading)
+  const loginTab = document.getElementById('login-tab');
+  const signupTab = document.getElementById('signup-tab');
+
+  loginTab.addEventListener('click', () => {
+    loginTab.classList.add('active');
+    signupTab.classList.remove('active');
+  });
+
+  signupTab.addEventListener('click', () => {
+    signupTab.classList.add('active');
+    loginTab.classList.remove('active');
+  });
+
+  // Redirect to login page after loading
+  setTimeout(() => {
+    window.location.href = "login.html";
+  }, 3000); // 3 seconds
+</script>
+
+</body>
+</html>
