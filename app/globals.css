@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom animation for the loading bar music note sliding effect */
+@keyframes slide {
+  0% { left: -40px; }
+  100% { left: 100%; }
+}
+
+.animate-slide {
+  animation: slide 2s linear infinite;
+}

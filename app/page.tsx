@@ -1,65 +1,61 @@
-import Image from "next/image";
+// app/page.tsx
+// This is the LOADING SCREEN — the first thing users see when they open Hookify
+// After 3 seconds it automatically takes them to the login page
 
-export default function Home() {
+"use client"; // This tells Next.js this page runs in the browser (not server)
+
+import { useEffect } from "react"; // useEffect runs code after the page loads
+import { useRouter } from "next/navigation"; // useRouter lets us navigate between pages
+import Image from "next/image"; // Next.js optimized image component
+
+export default function LoadingPage() {
+  // useRouter gives us the ability to move to another page programmatically
+  const router = useRouter();
+
+  // useEffect runs once when the page loads (the [] at the end means "run once")
+  useEffect(() => {
+    // Wait 3 seconds then redirect to the login page
+    const timer = setTimeout(() => {
+      router.push("/login"); // "/login" maps to app/login/page.tsx
+    }, 3000);
+
+    // Cleanup: if user leaves before 3 seconds, cancel the timer
+    return () => clearTimeout(timer);
+  }, [router]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+    // Full screen dark blue background, everything centered
+    <main className="min-h-screen bg-[#0b1623] flex flex-col items-center justify-center">
+
+      {/* Hookify brand name in big cursive font */}
+      <h1 className="text-5xl mb-8 text-[#90e0ef]" style={{ fontFamily: "cursive" }}>
+        Hookify
+      </h1>
+
+      {/* White card in the center */}
+      <div className="bg-[#0e2a3b] rounded-3xl p-10 flex flex-col items-center w-80 shadow-lg">
+
+        {/* Elephant logo — the face of Hookify */}
         <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+          src="/Elephant_Beats.jpeg"
+          alt="Hookify Elephant Logo"
+          width={80}
+          height={80}
+          className="rounded-full mb-6 border-2 border-[#90e0ef]"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        {/* Simple loading text */}
+        <p className="text-[#90e0ef] text-sm mb-6 tracking-widest uppercase">
+          Loading your hooks...
+        </p>
+
+        {/* Animated loading bar with a music note sliding across */}
+        <div className="w-full h-3 bg-[#112d44] rounded-full overflow-hidden relative">
+          <div className="absolute top-0 left-0 h-full w-10 bg-[#90e0ef] rounded-full animate-slide flex items-center justify-center text-xs">
+            🎵
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
