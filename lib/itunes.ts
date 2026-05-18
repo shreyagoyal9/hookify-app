@@ -1,21 +1,23 @@
-// lib/itunes.ts (we're reusing this file for iTunes API)
-// iTunes Search API — free, no API key, real 30s previews!
-// Works directly from browser with no CORS issues
+// lib/itunes.ts
+// iTunes Search API helper
+// We also store MANUAL hook timestamps here (Option A)
+// Later our AI model (Option B) will replace these manual timestamps
 
-// ── Type: shape of an iTunes track ───────────────────────────────
+// ── Type: shape of a Track ───────────────────────────────────────
 export type Track = {
   id: number;
   title: string;
   artist: string;
   album: string;
-  albumArt: string;   // High quality album cover from Apple
-  previewUrl: string; // Real 30-second audio preview!
-  gradient: string;   // Card background gradient
+  albumArt: string;
+  previewUrl: string;
+  hookStart: number;  // ← NEW: which second the hook starts at (in the 30s preview)
+  hookEnd: number;    // ← NEW: which second the hook ends at
+  gradient: string;
   liked: boolean;
 };
 
-// ── Gradient colors for each card ────────────────────────────────
-// Each song gets a unique gradient so cards look different
+// ── Gradient colors for cards ────────────────────────────────────
 const GRADIENTS = [
   "from-[#1a0533] via-[#2d1b69] to-[#0d1b2a]",
   "from-[#0d2137] via-[#1a3a4a] to-[#0a1628]",
@@ -27,9 +29,27 @@ const GRADIENTS = [
   "from-[#2a0d0d] via-[#3d1515] to-[#1a0505]",
 ];
 
-// ── Search iTunes for one song ────────────────────────────────────
+// ── Manual hook timestamps ───────────────────────────────────────
+// iTunes previews are 30 seconds long
+// We manually mark where the HOOK part is within those 30 seconds
+// Format: { query, hookStart (seconds), hookEnd (seconds) }
+// Option B (AI model) will automate this later!
+export const TRENDING_SONGS = [
+  { query: "Espresso Sabrina Carpenter",            hookStart: 8,  hookEnd: 23 },
+  { query: "Not Like Us Kendrick Lamar",            hookStart: 5,  hookEnd: 20 },
+  { query: "APT ROSE Bruno Mars",                   hookStart: 10, hookEnd: 25 },
+  { query: "Kesariya Arijit Singh",                 hookStart: 6,  hookEnd: 22 },
+  { query: "Phir Aur Kya Chahiye Arijit Singh",     hookStart: 8,  hookEnd: 24 },
+  { query: "Die With A Smile Lady Gaga Bruno Mars", hookStart: 5,  hookEnd: 20 },
+  { query: "Luther Kendrick Lamar SZA",             hookStart: 7,  hookEnd: 22 },
+  { query: "Tere Vaaste Varun Jain",                hookStart: 6,  hookEnd: 21 },
+];
+
+// ── Search iTunes for one song ───────────────────────────────────
 export async function searchTrack(
   query: string,
+  hookStart: number,
+  hookEnd: number,
   index: number
 ): Promise<Track | null> {
   try {
@@ -41,7 +61,6 @@ export async function searchTrack(
     const data = await response.json();
     const track = data.results?.[0];
 
-    // Skip if no track or no preview
     if (!track || !track.previewUrl) return null;
 
     return {
@@ -49,8 +68,10 @@ export async function searchTrack(
       title:      track.trackName,
       artist:     track.artistName,
       album:      track.collectionName,
-      albumArt:   track.artworkUrl100.replace("100x100", "400x400"), // Get bigger image
-      previewUrl: track.previewUrl, // Real 30s audio!
+      albumArt:   track.artworkUrl100.replace("100x100", "400x400"),
+      previewUrl: track.previewUrl,
+      hookStart,  // Store the hook start time
+      hookEnd,    // Store the hook end time
       gradient:   GRADIENTS[index % GRADIENTS.length],
       liked:      false,
     };
@@ -60,14 +81,12 @@ export async function searchTrack(
   }
 }
 
-// ── Trending songs to fetch ───────────────────────────────────────
-export const TRENDING_QUERIES = [
-  "Espresso Sabrina Carpenter",
-  "Not Like Us Kendrick Lamar",
-  "APT ROSE Bruno Mars",
-  "Kesariya Arijit Singh",
-  "Phir Aur Kya Chahiye Arijit Singh",
-  "Die With A Smile Lady Gaga",
-  "Luther Kendrick Lamar SZA",
-  "Tere Vaaste Varun Jain",
-];
+// ── Fetch all trending hooks ─────────────────────────────────────
+export async function fetchAllHooks(): Promise<Track[]> {
+  const results = await Promise.all(
+    TRENDING_SONGS.map((song, i) =>
+      searchTrack(song.query, song.hookStart, song.hookEnd, i)
+    )
+  );
+  return results.filter((t): t is Track => t !== null);
+}

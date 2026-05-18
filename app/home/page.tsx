@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { searchTrack, TRENDING_QUERIES, type Track } from "@/lib/itunes";
+import { fetchAllHooks, type Track } from "@/lib/itunes";
 
 // ── Main Component ───────────────────────────────────────────────
 export default function HomePage() {
@@ -28,14 +28,7 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchHooks() {
       setLoading(true);
-
-      // Fetch all songs in parallel
-      const results = await Promise.all(
-        TRENDING_QUERIES.map((query, i) => searchTrack(query, i))
-      );
-
-      // Filter out nulls
-      const validHooks = results.filter((t): t is Track => t !== null);
+      const validHooks = await fetchAllHooks();
       setHooks(validHooks);
       setLoading(false);
     }
@@ -52,7 +45,9 @@ export default function HomePage() {
 
   const currentHook = hooks[currentIndex];
 
-  // ── Play or pause audio ────────────────────────────────────────
+  // ── Play the HOOK part only (not full 30s preview) ─────────────
+  // hookStart and hookEnd tell us exactly which seconds to play
+  // This is Option A — later AI will detect these automatically!
   const togglePlay = () => {
     if (!currentHook?.previewUrl) return;
 
@@ -62,22 +57,42 @@ export default function HomePage() {
       setIsPlaying(false);
       setIsVibing(false);
     } else {
-      // Create new audio element if needed or song changed
+      // Create new audio or reuse existing
       if (!audioRef.current || audioRef.current.src !== currentHook.previewUrl) {
         audioRef.current?.pause();
         audioRef.current = new Audio(currentHook.previewUrl);
-        // When audio ends naturally, reset play state
+
+        // Jump to hook start time immediately
+        audioRef.current.currentTime = currentHook.hookStart;
+
+        // Stop playing when hook ends
+        audioRef.current.ontimeupdate = () => {
+          if (
+            audioRef.current &&
+            audioRef.current.currentTime >= currentHook.hookEnd
+          ) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = currentHook.hookStart; // Reset to hook start
+            setIsPlaying(false);
+            setIsVibing(false);
+          }
+        };
+
+        // Also handle natural audio end
         audioRef.current.onended = () => {
           setIsPlaying(false);
           setIsVibing(false);
         };
+      } else {
+        // Same song — just jump back to hook start
+        audioRef.current.currentTime = currentHook.hookStart;
       }
+
       audioRef.current.play();
       setIsPlaying(true);
       setIsVibing(true);
     }
   };
-
   // ── Swipe to next hook ─────────────────────────────────────────
   const swipeNext = () => {
     if (currentIndex < hooks.length - 1) {
