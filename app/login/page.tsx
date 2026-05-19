@@ -25,41 +25,46 @@ export default function LoginPage() {
     setLoading(true);
 
     if (activeTab === "signup") {
-      // Check passwords match
       if (password !== rePassword) {
         setError("Passwords don't match!");
         setLoading(false);
         return;
       }
 
-      // Create new account with Supabase
-      const { error } = await supabase.auth.signUp({ 
-  email, 
-  password,
-  options: {
-    emailRedirectTo: `https://hookify-app.vercel.app/home`,
-  }
-});
+      // Sign up without email confirmation
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+      });
+      
       if (error) {
         setError(error.message);
         setLoading(false);
         return;
       }
-      // Tell user to check email
-      setError("Check your email to confirm your account!");
+
+      // If user created successfully go straight to home
+      if (data.user) {
+        router.push("/home");
+        return;
+      }
+
       setLoading(false);
       return;
     }
 
-    // Login with existing account
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // Login
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    });
+    
     if (error) {
       setError(error.message);
       setLoading(false);
       return;
     }
 
-    // Success — go to home page!
     router.push("/home");
   };
 
