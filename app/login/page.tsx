@@ -24,47 +24,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
+    // Simple validation for now
     if (activeTab === "signup") {
       if (password !== rePassword) {
         setError("Passwords don't match!");
         setLoading(false);
         return;
       }
-
-      // Sign up without email confirmation
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-      });
-      
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-
-      // If user created successfully go straight to home
-      if (data.user) {
-        router.push("/home");
-        return;
-      }
-
-      setLoading(false);
-      return;
     }
 
-    // Login
-    const { error } = await supabase.auth.signInWithPassword({ 
-      email, 
-      password 
-    });
-    
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
+    // Go straight to home — we'll add real auth later
     router.push("/home");
   };
 
