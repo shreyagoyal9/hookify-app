@@ -1,35 +1,77 @@
 // app/login/page.tsx
-// This is the LOGIN / SIGNUP page
-// Users can switch between Login and Signup using the tab buttons
+// Login / Signup page with REAL Supabase authentication
+// Supports email/password AND Google OAuth login
 
-"use client"; // Runs in the browser
+"use client";
 
-import { useState } from "react"; // useState lets us track which tab is active
-import { useRouter } from "next/navigation"; // For navigating to home after login
-import Image from "next/image"; // Optimized image from Next.js
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
-  // Track which tab user is on: "login" or "signup"
-  const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
-
-  // Track what user types in the form fields
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [activeTab, setActiveTab]   = useState<"login" | "signup">("login");
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
   const [rePassword, setRePassword] = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
+  const router                      = useRouter();
 
-  // Router to navigate to home page after successful login
-  const router = useRouter();
+  // ── Email / Password Login ─────────────────────────────────────
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  // This runs when user clicks Login or Signup button
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // Stop page from refreshing
+    if (activeTab === "signup") {
+      // Check passwords match
+      if (password !== rePassword) {
+        setError("Passwords don't match!");
+        setLoading(false);
+        return;
+      }
 
-    // For now we just go to home page (we'll add real auth later)
+      // Create new account with Supabase
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+      // Tell user to check email
+      setError("Check your email to confirm your account!");
+      setLoading(false);
+      return;
+    }
+
+    // Login with existing account
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Success — go to home page!
     router.push("/home");
   };
 
+  // ── Google OAuth Login ─────────────────────────────────────────
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        // After Google login, come back to our home page
+        redirectTo: `${window.location.origin}/home`,
+      },
+    });
+    if (error) setError(error.message);
+    setLoading(false);
+  };
+
   return (
-    // Full screen dark background, everything centered
     <main className="min-h-screen bg-[#0b1623] flex flex-col items-center justify-center">
 
       {/* Hookify brand name */}
@@ -37,9 +79,9 @@ export default function LoginPage() {
         Hookify
       </h1>
 
-      {/* Auth card — the white box in the middle */}
-      
-<div className="bg-[#0e2a3b] rounded-3xl p-10 flex flex-col items-center w-[420px] shadow-lg hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(144,224,239,0.4)] transition-all duration-300">
+      {/* Auth card */}
+      <div className="bg-[#0e2a3b] rounded-3xl p-10 flex flex-col items-center w-[420px] shadow-lg hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(144,224,239,0.4)] transition-all duration-300">
+
         {/* Elephant logo */}
         <Image
           src="/Elephant_Beats.jpeg"
@@ -49,23 +91,20 @@ export default function LoginPage() {
           className="rounded-full mb-6 border-2 border-[#90e0ef] hover:scale-110 transition-transform duration-300"
         />
 
-        {/* Login / Signup tab switcher */}
+        {/* Login / Signup tabs */}
         <div className="flex gap-3 w-full mb-6">
-          {/* Login tab button */}
           <button
-            onClick={() => setActiveTab("login")}
+            onClick={() => { setActiveTab("login"); setError(""); }}
             className={`flex-1 py-2 rounded-full text-sm transition-all duration-300 ${
               activeTab === "login"
-                ? "bg-[#90e0ef] text-[#0b1623] font-bold" // active style
-                : "bg-[#0b1623] text-gray-400"             // inactive style
+                ? "bg-[#90e0ef] text-[#0b1623] font-bold"
+                : "bg-[#0b1623] text-gray-400"
             }`}
           >
             Login
           </button>
-
-          {/* Signup tab button */}
           <button
-            onClick={() => setActiveTab("signup")}
+            onClick={() => { setActiveTab("signup"); setError(""); }}
             className={`flex-1 py-2 rounded-full text-sm transition-all duration-300 ${
               activeTab === "signup"
                 ? "bg-[#90e0ef] text-[#0b1623] font-bold"
@@ -76,10 +115,20 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Form — email, password, and optional re-enter password */}
-        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3">
+        {/* Error or success message */}
+        {error && (
+          <div className={`w-full text-center text-xs px-4 py-2 rounded-full mb-4 ${
+            error.includes("Check your email")
+              ? "bg-green-500/20 text-green-400"
+              : "bg-red-500/20 text-red-400"
+          }`}>
+            {error}
+          </div>
+        )}
 
-          {/* Email input */}
+        {/* Form */}
+        <form onSubmit={handleEmailLogin} className="w-full flex flex-col gap-3">
+
           <input
             type="email"
             placeholder="Email"
@@ -89,7 +138,6 @@ export default function LoginPage() {
             className="w-full px-4 py-3 rounded-full bg-[#0b1623] border border-[#90e0ef33] text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] transition-colors"
           />
 
-          {/* Password input */}
           <input
             type="password"
             placeholder="Password"
@@ -99,7 +147,7 @@ export default function LoginPage() {
             className="w-full px-4 py-3 rounded-full bg-[#0b1623] border border-[#90e0ef33] text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] transition-colors"
           />
 
-          {/* Re-enter password — only shown on Signup tab */}
+          {/* Only show on signup */}
           {activeTab === "signup" && (
             <input
               type="password"
@@ -111,20 +159,22 @@ export default function LoginPage() {
             />
           )}
 
-          {/* Submit button — says Login or Signup depending on active tab */}
+          {/* Submit button */}
           <button
             type="submit"
-            className="w-full py-3 rounded-full bg-[#90e0ef] text-[#0b1623] font-bold text-base hover:opacity-90 transition-opacity mt-1"
+            disabled={loading}
+            className="w-full py-3 rounded-full bg-[#90e0ef] text-[#0b1623] font-bold text-base hover:opacity-90 transition-opacity mt-1 disabled:opacity-50"
           >
-            {activeTab === "login" ? "Login" : "Signup"}
+            {loading ? "Please wait..." : activeTab === "login" ? "Login" : "Signup"}
           </button>
 
           {/* Google login button */}
           <button
             type="button"
-            className="w-full py-3 rounded-full bg-white text-[#0b1623] font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full py-3 rounded-full bg-white text-[#0b1623] font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {/* Google G logo — inline SVG so it always works, no external URL needed */}
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -135,14 +185,10 @@ export default function LoginPage() {
           </button>
         </form>
 
-        
-
-        {/* Terms text */}
+        {/* Terms */}
         <p className="text-gray-500 text-xs mt-4 text-center">
           By signing up, you agree to our{" "}
-          <a href="#" className="text-[#90e0ef] font-bold">
-            Terms & Privacy
-          </a>
+          <a href="#" className="text-[#90e0ef] font-bold">Terms & Privacy</a>
         </p>
       </div>
     </main>
