@@ -33,7 +33,13 @@ export default function LoginPage() {
       }
 
       // Create new account with Supabase
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({ 
+  email, 
+  password,
+  options: {
+    emailRedirectTo: `https://hookify-app.vercel.app/home`,
+  }
+});
       if (error) {
         setError(error.message);
         setLoading(false);
