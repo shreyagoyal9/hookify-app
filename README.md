@@ -96,6 +96,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ---
 
 ## 📁 Project Structure
+
+\```
 hookify-app/
 ├── app/
 │   ├── page.tsx          # Loading screen
@@ -115,7 +117,7 @@ hookify-app/
 ├── public/
 │   └── Elephant_Beats.jpeg  # Hookify mascot
 └── README.md
----
+\```
 
 ## 🗺️ Roadmap
 
