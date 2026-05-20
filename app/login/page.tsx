@@ -49,7 +49,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `https://hookify-app.vercel.app/home`,
+        redirectTo: `https://hookify-app-chi.vercel.app/home`,
       },
     });
     if (error) setError(error.message);
