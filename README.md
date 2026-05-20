@@ -130,7 +130,7 @@ hookify-app/
 - [x] Save / like hooks
 - [x] Trending feed
 - [x] Deploy to Vercel
-- [ ] Real Supabase authentication
+- [x] Real Supabase authentication
 - [ ] Google OAuth login
 - [ ] AI Hook Detection (Python + librosa)
 - [ ] Bollywood / regional music support
