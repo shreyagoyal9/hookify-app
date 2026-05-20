@@ -1,6 +1,7 @@
 // app/home/page.tsx
 // Main home page — TikTok swipe feed with REAL music from iTunes API
 // Real album art, real 30-second audio previews!
+// Saved hooks persist in Supabase database!
 
 "use client";
 
@@ -8,8 +9,8 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchAllHooks, type Track } from "@/lib/itunes";
+import { supabase } from "@/lib/supabase";
 
-// ── Main Component ───────────────────────────────────────────────
 export default function HomePage() {
   const [hooks, setHooks]               = useState<Track[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -19,9 +20,9 @@ export default function HomePage() {
   const [isPlaying, setIsPlaying]       = useState(false);
   const [activeTab, setActiveTab]       = useState("home");
   const [savedHooks, setSavedHooks]     = useState<number[]>([]);
+  const [userId, setUserId]             = useState<string | null>(null); // logged in user
+  const [userEmail, setUserEmail]       = useState<string>("");          // user's email
 
-  // useRef gives us direct access to the HTML audio element
-  // This is how we play/pause real audio in React
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // ── Fetch real songs from iTunes when page loads ───────────────
@@ -32,9 +33,33 @@ export default function HomePage() {
       setHooks(validHooks);
       setLoading(false);
     }
-
     fetchHooks();
-  }, []); // Empty array = run once when page loads
+  }, []);
+
+  // ── Get current logged in user + load their saved hooks ────────
+  useEffect(() => {
+    async function getUser() {
+      // Get current session from Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        setUserId(user.id);
+        setUserEmail(user.email ?? "");
+
+        // Load their saved hooks from database
+        const { data } = await supabase
+          .from("saved_hooks")
+          .select("track_id")
+          .eq("user_id", user.id);
+
+        if (data) {
+          // Store just the track IDs so we know which ones are liked
+          setSavedHooks(data.map((row) => row.track_id));
+        }
+      }
+    }
+    getUser();
+  }, []);
 
   // ── Clean up audio when component unmounts ─────────────────────
   useEffect(() => {
@@ -45,46 +70,34 @@ export default function HomePage() {
 
   const currentHook = hooks[currentIndex];
 
-  // ── Play the HOOK part only (not full 30s preview) ─────────────
-  // hookStart and hookEnd tell us exactly which seconds to play
-  // This is Option A — later AI will detect these automatically!
+  // ── Play the HOOK part only ────────────────────────────────────
   const togglePlay = () => {
     if (!currentHook?.previewUrl) return;
 
     if (isPlaying) {
-      // Pause
       audioRef.current?.pause();
       setIsPlaying(false);
       setIsVibing(false);
     } else {
-      // Create new audio or reuse existing
       if (!audioRef.current || audioRef.current.src !== currentHook.previewUrl) {
         audioRef.current?.pause();
         audioRef.current = new Audio(currentHook.previewUrl);
-
-        // Jump to hook start time immediately
         audioRef.current.currentTime = currentHook.hookStart;
 
-        // Stop playing when hook ends
         audioRef.current.ontimeupdate = () => {
-          if (
-            audioRef.current &&
-            audioRef.current.currentTime >= currentHook.hookEnd
-          ) {
+          if (audioRef.current && audioRef.current.currentTime >= currentHook.hookEnd) {
             audioRef.current.pause();
-            audioRef.current.currentTime = currentHook.hookStart; // Reset to hook start
+            audioRef.current.currentTime = currentHook.hookStart;
             setIsPlaying(false);
             setIsVibing(false);
           }
         };
 
-        // Also handle natural audio end
         audioRef.current.onended = () => {
           setIsPlaying(false);
           setIsVibing(false);
         };
       } else {
-        // Same song — just jump back to hook start
         audioRef.current.currentTime = currentHook.hookStart;
       }
 
@@ -93,14 +106,13 @@ export default function HomePage() {
       setIsVibing(true);
     }
   };
+
   // ── Swipe to next hook ─────────────────────────────────────────
   const swipeNext = () => {
     if (currentIndex < hooks.length - 1) {
-      // Stop current audio before switching
       audioRef.current?.pause();
       setIsPlaying(false);
       setIsVibing(false);
-
       setDirection("left");
       setTimeout(() => {
         setCurrentIndex((p) => p + 1);
@@ -115,7 +127,6 @@ export default function HomePage() {
       audioRef.current?.pause();
       setIsPlaying(false);
       setIsVibing(false);
-
       setDirection("right");
       setTimeout(() => {
         setCurrentIndex((p) => p - 1);
@@ -124,22 +135,64 @@ export default function HomePage() {
     }
   };
 
-  // ── Like / unlike a hook ───────────────────────────────────────
-  const toggleLike = () => {
+  // ── Like / unlike + save to Supabase database ──────────────────
+  const toggleLike = async () => {
     if (!currentHook) return;
+
+    const isLiked = savedHooks.includes(currentHook.id);
+
+    // Update UI immediately (don't wait for database)
     setHooks((prev) =>
       prev.map((h) =>
         h.id === currentHook.id ? { ...h, liked: !h.liked } : h
       )
     );
     setSavedHooks((prev) =>
-      prev.includes(currentHook.id)
+      isLiked
         ? prev.filter((id) => id !== currentHook.id)
         : [...prev, currentHook.id]
     );
+
+    // Save to database if user is logged in
+    if (userId) {
+      if (isLiked) {
+        // Remove from database
+        await supabase
+          .from("saved_hooks")
+          .delete()
+          .eq("user_id", userId)
+          .eq("track_id", currentHook.id);
+      } else {
+        // Add to database
+        await supabase.from("saved_hooks").insert({
+          user_id:     userId,
+          track_id:    currentHook.id,
+          title:       currentHook.title,
+          artist:      currentHook.artist,
+          album:       currentHook.album,
+          album_art:   currentHook.albumArt,
+          preview_url: currentHook.previewUrl,
+          hook_start:  currentHook.hookStart,
+          hook_end:    currentHook.hookEnd,
+          gradient:    currentHook.gradient,
+        });
+      }
+    }
   };
 
-  // ── Loading screen while fetching songs ────────────────────────
+  // ── Share current hook ─────────────────────────────────────────
+  const handleShare = async () => {
+    if (!currentHook) return;
+    const text = `🎵 Check out the hook of "${currentHook.title}" by ${currentHook.artist} on Hookify!`;
+    if (navigator.share) {
+      await navigator.share({ title: "Hookify", text, url: window.location.href });
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert("Link copied to clipboard!");
+    }
+  };
+
+  // ── Loading screen ─────────────────────────────────────────────
   if (loading) {
     return (
       <main className="min-h-screen bg-[#0a0e1a] text-white flex flex-col items-center justify-center gap-4">
@@ -223,44 +276,29 @@ export default function HomePage() {
                   boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
                 }}
               >
-                {/* ── ALBUM ART + VINYL EFFECT ─────────────────── */}
+                {/* ── ALBUM ART + VINYL ────────────────────────── */}
                 <div className="flex justify-center mb-4">
                   <div className="relative">
-
-                    {/* Spinning outer ring */}
                     <div
                       className={`w-80 h-80 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${
                         isPlaying ? "animate-spin" : ""
                       }`}
                       style={{ animationDuration: "4s" }}
                     >
-                      {/* Vinyl grooves */}
                       <div
                         className="w-72 h-72 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
-                        style={{
-                          background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)",
-                        }}
+                        style={{ background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)" }}
                       >
                         <div className="w-60 h-60 rounded-full border border-white/5 flex items-center justify-center">
                           <div className="w-48 h-48 rounded-full border border-white/5 flex items-center justify-center">
-
-                            {/* Real album art in the center! */}
                             <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
-                              <img
-                                src={currentHook.albumArt}
-                                alt={currentHook.album}
-                                className="w-full h-full object-cover"
-                              />
+                              <img src={currentHook.albumArt} alt={currentHook.album} className="w-full h-full object-cover" />
                             </div>
-
                           </div>
                         </div>
                       </div>
                     </div>
-
-                    {/* Center hole */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#0a0e1a] border border-white/20" />
-
                   </div>
                 </div>
 
@@ -305,26 +343,30 @@ export default function HomePage() {
 
                 {/* ── ACTION BUTTONS ───────────────────────────── */}
                 <div className="flex justify-around items-center">
+
+                  {/* Like / Save */}
                   <button onClick={toggleLike} className="flex flex-col items-center gap-1 group">
                     <span className={`text-3xl transition-transform duration-200 group-hover:scale-125 ${
-                      currentHook.liked ? "text-red-400" : "text-gray-400"
+                      savedHooks.includes(currentHook.id) ? "text-red-400" : "text-gray-400"
                     }`}>
-                      {currentHook.liked ? "❤️" : "🤍"}
+                      {savedHooks.includes(currentHook.id) ? "❤️" : "🤍"}
                     </span>
                     <span className="text-xs text-gray-500">save</span>
                   </button>
 
-                  <button className="flex flex-col items-center gap-1 group">
+                  {/* Share — actually works now! */}
+                  <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
                     <span className="text-3xl text-gray-400 group-hover:scale-125 transition-transform">📤</span>
                     <span className="text-xs text-gray-500">share</span>
                   </button>
 
+                  {/* Playlist */}
                   <button className="flex flex-col items-center gap-1 group">
                     <span className="text-3xl text-gray-400 group-hover:scale-125 transition-transform">➕</span>
                     <span className="text-xs text-gray-500">playlist</span>
                   </button>
-                </div>
 
+                </div>
               </motion.div>
             </AnimatePresence>
 
@@ -399,7 +441,8 @@ export default function HomePage() {
               height={90}
               className="rounded-full border-2 border-[#90e0ef] mx-auto mb-4 shadow-[0_0_20px_rgba(144,224,239,0.4)]"
             />
-            <h2 className="text-xl font-medium mb-1">shreya goyal</h2>
+            {/* Show real email instead of hardcoded name */}
+            <h2 className="text-xl font-medium mb-1">{userEmail || "hook listener"}</h2>
             <p className="text-gray-400 text-sm mb-8">hook listener 🎧</p>
             <div className="flex justify-center gap-12 mb-8">
               <div>
@@ -411,8 +454,16 @@ export default function HomePage() {
                 <p className="text-xs text-gray-400">hooks played</p>
               </div>
             </div>
-            <button className="w-64 py-3 rounded-full border border-[#90e0ef]/30 text-[#90e0ef] text-sm hover:bg-[#90e0ef]/10 transition-all">
-              edit profile
+
+            {/* Logout button */}
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+              }}
+              className="w-64 py-3 rounded-full border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all"
+            >
+              logout
             </button>
           </div>
         )}
