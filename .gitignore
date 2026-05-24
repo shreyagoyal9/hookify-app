@@ -40,4 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.env.local
+.env.localtest.mp3
+__pycache__/
+*.pyc
