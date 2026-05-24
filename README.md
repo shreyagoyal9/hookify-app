@@ -131,8 +131,8 @@ hookify-app/
 - [x] Trending feed
 - [x] Deploy to Vercel
 - [x] Real Supabase authentication
-- [ ] Google OAuth login
-- [ ] AI Hook Detection (Python + librosa)
+- [x] Google OAuth login
+- [x] AI Hook Detection (Python + librosa)
 - [ ] Bollywood / regional music support
 - [ ] Share hooks to Instagram / WhatsApp
 - [ ] Custom playlists
