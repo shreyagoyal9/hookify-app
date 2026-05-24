@@ -1,7 +1,7 @@
 // lib/itunes.ts
-// iTunes Search API helper
-// We also store MANUAL hook timestamps here (Option A)
-// Later our AI model (Option B) will replace these manual timestamps
+// iTunes Search API helper — now with AI hook detection!
+// Flow: search iTunes → get preview URL → send to Python AI → get hook timestamps
+// Falls back to manual timestamps if AI server is not running
 
 // ── Type: shape of a Track ───────────────────────────────────────
 export type Track = {
@@ -11,8 +11,8 @@ export type Track = {
   album: string;
   albumArt: string;
   previewUrl: string;
-  hookStart: number;  // ← NEW: which second the hook starts at (in the 30s preview)
-  hookEnd: number;    // ← NEW: which second the hook ends at
+  hookStart: number;  // From AI detector or manual fallback
+  hookEnd: number;    // From AI detector or manual fallback
   gradient: string;
   liked: boolean;
 };
@@ -29,27 +29,59 @@ const GRADIENTS = [
   "from-[#2a0d0d] via-[#3d1515] to-[#1a0505]",
 ];
 
-// ── Manual hook timestamps ───────────────────────────────────────
-// iTunes previews are 30 seconds long
-// We manually mark where the HOOK part is within those 30 seconds
-// Format: { query, hookStart (seconds), hookEnd (seconds) }
-// Option B (AI model) will automate this later!
-export const TRENDING_SONGS = [
-  { query: "Espresso Sabrina Carpenter",            hookStart: 8,  hookEnd: 23 },
-  { query: "Not Like Us Kendrick Lamar",            hookStart: 5,  hookEnd: 20 },
-  { query: "APT ROSE Bruno Mars",                   hookStart: 10, hookEnd: 25 },
-  { query: "Kesariya Arijit Singh",                 hookStart: 6,  hookEnd: 22 },
-  { query: "Phir Aur Kya Chahiye Arijit Singh",     hookStart: 8,  hookEnd: 24 },
-  { query: "Die With A Smile Lady Gaga Bruno Mars", hookStart: 5,  hookEnd: 20 },
-  { query: "Luther Kendrick Lamar SZA",             hookStart: 7,  hookEnd: 22 },
-  { query: "Tere Vaaste Varun Jain",                hookStart: 6,  hookEnd: 21 },
-];
+// ── Manual fallback timestamps ────────────────────────────────────
+// Used when AI server is not running
+const MANUAL_TIMESTAMPS: Record<string, { hookStart: number; hookEnd: number }> = {
+  "Espresso Sabrina Carpenter":            { hookStart: 8,  hookEnd: 23 },
+  "Not Like Us Kendrick Lamar":            { hookStart: 5,  hookEnd: 20 },
+  "APT ROSE Bruno Mars":                   { hookStart: 10, hookEnd: 25 },
+  "Kesariya Arijit Singh":                 { hookStart: 6,  hookEnd: 22 },
+  "Phir Aur Kya Chahiye Arijit Singh":     { hookStart: 8,  hookEnd: 24 },
+  "Die With A Smile Lady Gaga Bruno Mars": { hookStart: 5,  hookEnd: 20 },
+  "Luther Kendrick Lamar SZA":            { hookStart: 7,  hookEnd: 22 },
+  "Tere Vaaste Varun Jain":               { hookStart: 6,  hookEnd: 21 },
+};
+
+// ── AI Hook Detection ─────────────────────────────────────────────
+// Calls our Next.js API route which forwards to Python AI server
+// Returns AI-detected hook timestamps or null if AI unavailable
+async function detectHookWithAI(
+  previewUrl: string
+): Promise<{ hookStart: number; hookEnd: number } | null> {
+  try {
+    // Step 1: Download the iTunes preview audio
+    const audioResponse = await fetch(previewUrl);
+    const audioBlob     = await audioResponse.blob();
+
+    // Step 2: Send to Next.js bridge route → Python AI server
+    const formData = new FormData();
+    formData.append("file", audioBlob, "preview.m4a");
+
+    const aiResponse = await fetch("/api/detect-hook", {
+      method: "POST",
+      body:   formData,
+    });
+
+    const result = await aiResponse.json();
+
+    if (result.success) {
+      console.log(`🤖 AI hook: ${result.hook_start}s → ${result.hook_end}s (confidence: ${result.confidence})`);
+      return {
+        hookStart: result.hook_start,
+        hookEnd:   result.hook_end,
+      };
+    }
+    return null;
+  } catch (error) {
+    // AI server not running — use manual fallback
+    console.log("⚠️ AI unavailable, using manual timestamps");
+    return null;
+  }
+}
 
 // ── Search iTunes for one song ───────────────────────────────────
 export async function searchTrack(
   query: string,
-  hookStart: number,
-  hookEnd: number,
   index: number
 ): Promise<Track | null> {
   try {
@@ -58,10 +90,24 @@ export async function searchTrack(
     )}&media=music&limit=1`;
 
     const response = await fetch(url);
-    const data = await response.json();
-    const track = data.results?.[0];
+    const data     = await response.json();
+    const track    = data.results?.[0];
 
     if (!track || !track.previewUrl) return null;
+
+    // Start with manual fallback timestamps
+    let hookStart = MANUAL_TIMESTAMPS[query]?.hookStart ?? 5;
+    let hookEnd   = MANUAL_TIMESTAMPS[query]?.hookEnd   ?? 20;
+
+    // Try AI detection — replaces manual if successful!
+    const aiResult = await detectHookWithAI(track.previewUrl);
+    if (aiResult) {
+      hookStart = aiResult.hookStart;
+      hookEnd   = aiResult.hookEnd;
+      console.log(`✅ AI timestamps used for "${query}"`);
+    } else {
+      console.log(`📝 Manual timestamps used for "${query}"`);
+    }
 
     return {
       id:         track.trackId,
@@ -70,8 +116,8 @@ export async function searchTrack(
       album:      track.collectionName,
       albumArt:   track.artworkUrl100.replace("100x100", "400x400"),
       previewUrl: track.previewUrl,
-      hookStart,  // Store the hook start time
-      hookEnd,    // Store the hook end time
+      hookStart,
+      hookEnd,
       gradient:   GRADIENTS[index % GRADIENTS.length],
       liked:      false,
     };
@@ -81,12 +127,22 @@ export async function searchTrack(
   }
 }
 
-// ── Fetch all trending hooks ─────────────────────────────────────
+// ── Trending songs list ───────────────────────────────────────────
+export const TRENDING_SONGS = [
+  "Espresso Sabrina Carpenter",
+  "Not Like Us Kendrick Lamar",
+  "APT ROSE Bruno Mars",
+  "Kesariya Arijit Singh",
+  "Phir Aur Kya Chahiye Arijit Singh",
+  "Die With A Smile Lady Gaga Bruno Mars",
+  "Luther Kendrick Lamar SZA",
+  "Tere Vaaste Varun Jain",
+];
+
+// ── Fetch all trending hooks ──────────────────────────────────────
 export async function fetchAllHooks(): Promise<Track[]> {
   const results = await Promise.all(
-    TRENDING_SONGS.map((song, i) =>
-      searchTrack(song.query, song.hookStart, song.hookEnd, i)
-    )
+    TRENDING_SONGS.map((query, i) => searchTrack(query, i))
   );
   return results.filter((t): t is Track => t !== null);
 }
