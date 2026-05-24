@@ -521,13 +521,15 @@ export default function HomePage() {
       {/* ── BOTTOM NAV ──────────────────────────────────────────── */}
       <nav className="flex justify-around items-center px-6 py-4 border-t border-white/10 bg-[#0a0e1a]">
         {[
-          { id: "home",      icon: "🏠", label: "home"      },
-          { id: "trending",  icon: "🔥", label: "trending"  },
-          { id: "saved",     icon: "💾", label: "saved"     },
-          { id: "playlists", icon: "🎵", label: "playlists" },
-          { id: "profile",   icon: "👤", label: "profile"   },
+          { id: "home",      icon: "🏠", label: "home",      href: null        },
+          { id: "trending",  icon: "🔥", label: "trending",  href: null        },
+          { id: "saved",     icon: "💾", label: "saved",     href: null        },
+          { id: "search",    icon: "🔍", label: "search",    href: "/search"   },
+          { id: "playlists", icon: "🎵", label: "playlists", href: null        },
+          { id: "profile",   icon: "👤", label: "profile",   href: null        },
         ].map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+          <button key={tab.id}
+            onClick={() => tab.href ? window.location.href = tab.href : setActiveTab(tab.id)}
             className={`flex flex-col items-center gap-1 transition-all duration-200 ${
               activeTab === tab.id ? "text-[#90e0ef] scale-110" : "text-gray-500 hover:text-gray-300"
             }`}>
