@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const aiFormData = new FormData();
     aiFormData.append("file", file, "preview.m4a");
 
-    const aiResponse = await fetch("http://localhost:8000/detect-hook", {
+    const aiResponse = await fetch("https://web-production-c2177.up.railway.app/detect-hook", {
       method: "POST",
       body:   aiFormData,
     });
