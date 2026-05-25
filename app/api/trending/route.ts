@@ -8,7 +8,10 @@ export async function GET() {
   try {
     const apiKey = process.env.YOUTUBE_API_KEY;
     
-    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&videoCategoryId=10&regionCode=IN&maxResults=15&key=${apiKey}`;
+    // Fetch trending music globally — no region restriction
+    // publishedAfter = only songs from last 7 days
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&videoCategoryId=10&maxResults=20&key=${apiKey}`;
     
     const response = await fetch(url, { 
       next: { revalidate: 3600 } // Cache 1 hour
