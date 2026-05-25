@@ -132,8 +132,10 @@ hookify-app/
 - [x] Deploy to Vercel
 - [x] Real Supabase authentication
 - [x] Google OAuth login
-- [x] AI Hook Detection (Python + librosa)
-- [ ] Bollywood / regional music support
+- [x] AI Hook Detection (Python + librosa) 
+- [x] Bollywood / regional music support via YouTube trending
+- [x] Auto-updating trending feed via YouTube Data API
+- [x] AI server deployed on Railway
 - [ ] Share hooks to Instagram / WhatsApp
 - [ ] Custom playlists
 - [ ] Artist pages
