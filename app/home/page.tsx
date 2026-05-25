@@ -126,6 +126,19 @@ export default function HomePage() {
       setIsPlaying(true);
       setIsVibing(true);
 
+      // ── Track this play in database ───────────────────────────
+      // We use a separate async call so it doesn't slow down playback
+      if (userId && currentHook) {
+        supabase.from("hook_plays").insert({
+          user_id:  userId,
+          track_id: currentHook.id,
+          title:    currentHook.title,
+          artist:   currentHook.artist,
+        }).then(({ error }) => {
+          if (error) console.error("Play tracking error:", error);
+        });
+      }
+
       // Track this play in database
       if (userId && currentHook) {
         supabase.from("hook_plays").insert({
@@ -306,7 +319,9 @@ export default function HomePage() {
 
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
       <nav className="flex items-center justify-between px-8 py-4">
-        <h1 className="text-3xl text-[#90e0ef]" style={{ fontFamily: "cursive" }}>Hookify</h1>
+        <a href="/home">
+          <h1 className="text-3xl text-[#90e0ef] cursor-pointer hover:opacity-80 transition-opacity" style={{ fontFamily: "cursive" }}>Hookify</h1>
+        </a>
         <div className="relative cursor-pointer" onClick={togglePlay}>
           <Image src="/Elephant_Beats.jpeg" alt="Hookify mascot" width={50} height={50}
             className={`rounded-full border-2 border-[#90e0ef] transition-all duration-300 ${
@@ -339,12 +354,17 @@ export default function HomePage() {
                 initial={{ opacity: 0, x: direction === "left" ? 400 : -400 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: direction === "left" ? -400 : 400 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
+                transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.1}
+                dragMomentum={false}
+                whileDrag={{ scale: 0.98, cursor: "grabbing" }}
                 onDragEnd={(_, info) => {
-                  if (info.offset.x < -80) swipeNext();
-                  else if (info.offset.x > 80) swipePrev();
+                  const swipeThreshold = 60;
+                  const swipeVelocity = 200;
+                  if (info.offset.x < -swipeThreshold || info.velocity.x < -swipeVelocity) swipeNext();
+                  else if (info.offset.x > swipeThreshold || info.velocity.x > swipeVelocity) swipePrev();
                 }}
                 className={`bg-gradient-to-br ${currentHook.gradient} rounded-3xl p-8 border border-white/10 cursor-grab active:cursor-grabbing flex flex-col justify-between min-h-[78vh]`}
                 style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}

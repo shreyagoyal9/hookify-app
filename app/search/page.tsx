@@ -189,7 +189,9 @@ export default function SearchPage() {
 
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <h1 className="text-2xl text-[#90e0ef]" style={{ fontFamily: "cursive" }}>Hookify</h1>
+        <a href="/home">
+          <h1 className="text-2xl text-[#90e0ef] cursor-pointer hover:opacity-80 transition-opacity" style={{ fontFamily: "cursive" }}>Hookify</h1>
+        </a>
         <a href="/home" className="text-gray-400 text-sm hover:text-white">← back</a>
       </nav>
 
