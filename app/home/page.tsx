@@ -38,6 +38,33 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchHooks() {
       setLoading(true);
+      try {
+        // Try to get real YouTube trending songs first
+        const trendingResponse = await fetch("/api/trending");
+        const trendingData     = await trendingResponse.json();
+
+        if (trendingData.trending?.length > 0) {
+          // Use YouTube trending songs — search iTunes for each
+          const { searchTrack } = await import("@/lib/itunes");
+          // Try each song — use cleanTitle only if full query fails
+          const results = await Promise.all(
+            trendingData.trending
+              .slice(0, 15) // Try more songs to get 8 valid ones
+              .map((song: any, i: number) => searchTrack(song.cleanTitle, i))
+          );
+          const validHooks = results.filter((t): t is Track => t !== null);
+          
+          if (validHooks.length >= 3) {
+            setHooks(validHooks.slice(0, 8));
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // YouTube failed — fall back to manual list
+      }
+
+      // Fallback to manual list
       const validHooks = await fetchAllHooks();
       setHooks(validHooks);
       setLoading(false);
