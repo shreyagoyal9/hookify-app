@@ -125,6 +125,16 @@ export default function HomePage() {
       audioRef.current.play();
       setIsPlaying(true);
       setIsVibing(true);
+
+      // Track this play in database
+      if (userId && currentHook) {
+        supabase.from("hook_plays").insert({
+          user_id:  userId,
+          track_id: currentHook.id,
+          title:    currentHook.title,
+          artist:   currentHook.artist,
+        });
+      }
     }
   };
 
