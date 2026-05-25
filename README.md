@@ -159,9 +159,8 @@ This replaces our current manual timestamp system and is being built as an AIML 
 
 ## 👩‍💻 About the Developer
 
-Built by **Shreya Goyal** — Web Development + AIML student.
+Built by **Shreya Goyal** and **Shansit Suman** — Web Development + AIML student.
 
-- 🐙 GitHub: [@shreyagoyal9](https://github.com/shreyagoyal9)
 - 🌐 Live App: [hookify-app-chi.vercel.app](https://hookify-app-chi.vercel.app)
 
 ---
@@ -179,5 +178,5 @@ MIT License — feel free to use this project for learning!
 ---
 
 <div align="center">
-  Made with 🐘 and 🎵 by Shreya Goyal
+  Made with 🐘 and 🎵 by Shreya Goyal and Shansit Suman
 </div>
