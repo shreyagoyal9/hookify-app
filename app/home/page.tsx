@@ -80,7 +80,9 @@ export default function HomePage() {
         setUserId(user.id);
         setUserEmail(user.email ?? "");
         const { data: savedData } = await supabase
-          .from("saved_hooks").select("track_id").eq("user_id", user.id);
+          .from("saved_hooks")
+          .select("track_id")
+          .eq("user_id", user.id);
         if (savedData) setSavedHooks(savedData.map((r) => r.track_id));
         const { data: playlistData } = await supabase
           .from("playlists").select("id, name").eq("user_id", user.id)
