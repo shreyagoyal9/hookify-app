@@ -57,6 +57,7 @@ async function detectHookWithAI(
     });
 
     const result = await aiResponse.json();
+    console.log("AI response:", result);
 
     if (result.success) {
       console.log(`🤖 AI hook: ${result.hook_start}s → ${result.hook_end}s (confidence: ${result.confidence})`);
@@ -115,7 +116,7 @@ export async function searchTrack(
       liked:      false,
     };
   } catch (error) {
-    console.error(`iTunes search failed for "${query}":`, error);
+    console.log("⚠️ AI error:", error);
     return null;
   }
 }
