@@ -49,17 +49,11 @@ async function detectHookWithAI(
   previewUrl: string
 ): Promise<{ hookStart: number; hookEnd: number } | null> {
   try {
-    // Step 1: Download the iTunes preview audio
-    const audioResponse = await fetch(previewUrl);
-    const audioBlob     = await audioResponse.blob();
-
-    // Step 2: Send to Next.js bridge route → Python AI server
-    const formData = new FormData();
-    formData.append("file", audioBlob, "preview.m4a");
-
+    // Send just the URL — server downloads audio itself
     const aiResponse = await fetch("/api/detect-hook", {
       method: "POST",
-      body:   formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ previewUrl }),
     });
 
     const result = await aiResponse.json();
@@ -73,7 +67,6 @@ async function detectHookWithAI(
     }
     return null;
   } catch (error) {
-    // AI server not running — use manual fallback
     console.log("⚠️ AI unavailable, using manual timestamps");
     return null;
   }
