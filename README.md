@@ -159,7 +159,7 @@ This replaces our current manual timestamp system and is being built as an AIML 
 
 ## 👩‍💻 About the Developer
 
-Built by **Shreya Goyal** and **Shansit Suman** — Web Development + AIML student.
+Built by **Shreya Goyal** and **Shansit Suman**
 
 - 🌐 Live App: [hookify-app-chi.vercel.app](https://hookify-app-chi.vercel.app)
 
