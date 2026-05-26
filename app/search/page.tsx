@@ -184,20 +184,30 @@ export default function SearchPage() {
             dragElastic={0.1}
             dragMomentum={false}
             onDragEnd={(_, info) => {
-              // Swipe down → close card (go back to results)
-              if (info.offset.y > 80 || info.velocity.y > 300) {
-                closeCard();
-              }
-              // Swipe up → next song in results
-              if (info.offset.y < -80 || info.velocity.y < -300) {
-                const currentIdx = results.findIndex((t) => t.id === selectedTrack?.id);
-                if (currentIdx < results.length - 1) {
-                  audio?.pause();
-                  setIsPlaying(false);
-                  setSelectedTrack(results[currentIdx + 1]);
-                }
-              }
-            }}
+  const currentIdx = results.findIndex(
+    (t) => t.id === selectedTrack?.id
+  );
+
+  // Swipe UP → next song
+  if (info.offset.y < -80 || info.velocity.y < -300) {
+    if (currentIdx < results.length - 1) {
+      audio?.pause();
+      setIsPlaying(false);
+      setSelectedTrack(results[currentIdx + 1]);
+    }
+  }
+
+  // Swipe DOWN → previous song
+  else if (info.offset.y > 80 || info.velocity.y > 300) {
+    if (currentIdx > 0) {
+      audio?.pause();
+      setIsPlaying(false);
+      setSelectedTrack(results[currentIdx - 1]);
+    } else {
+      closeCard();
+    }
+  }
+}}
             className="fixed inset-0 z-50 bg-[#0a0e1a] flex flex-col cursor-grab active:cursor-grabbing"
           >
             {/* Back button */}
@@ -295,7 +305,9 @@ export default function SearchPage() {
 
               {/* Swipe hints */}
               <div className="mt-6 text-center">
-                <p className="text-gray-600 text-xs">↓ swipe down to close · ↑ swipe up for next</p>
+                <p className="text-gray-600 text-xs">
+  ↓ swipe down for previous · ↑ swipe up for next
+</p>
               </div>
             </div>
           </motion.div>
