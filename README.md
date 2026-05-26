@@ -264,6 +264,7 @@ Open [http://localhost:3000](http://localhost:3000) 🎉
 ---
 
 ## 📁 Project Structure
+```text
 hookify-app/
 ├── app/
 │   ├── page.tsx              # Loading screen
@@ -288,7 +289,7 @@ hookify-app/
 ├── detect_hook.py            # AI hook detection model
 ├── api.py                    # FastAPI server
 └── requirements.txt          # Python dependencies
-
+```
 ---
 
 ## 🗺️ Roadmap
