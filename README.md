@@ -28,7 +28,9 @@ You open Spotify. A 3-minute song plays. You wait... and wait... for that **one 
 
 Hookify is a **TikTok-style music app** that plays only the hook (catchiest part) of trending songs — powered by a custom AI model that automatically detects where the hook starts and ends in any song.
 
-> 📸 **[ADD SCREENSHOT: Loading screen with elephant mascot]**
+> 📸 **[Loading screen with elephant mascot]**
+> <img width="380" height="244" alt="Screenshot 2026-05-26 at 3 02 45 PM" src="https://github.com/user-attachments/assets/7eee7ed0-8836-47cc-9b33-f5a6e38c4bab" />
+
 
 ---
 
@@ -378,7 +380,7 @@ MIT License — feel free to use this project for learning!
 
 <div align="center">
 
-Made with 🐘 and 🎵 by Shreya Goyal & Shansit
+Made with 🐘 and 🎵 by Shreya Goyal & Shansit Suman.
 
 *just the hook. always.*
 
