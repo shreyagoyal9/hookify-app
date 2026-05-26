@@ -29,6 +29,7 @@ export default function HomePage() {
   const [userEmail, setUserEmail]       = useState<string>("");
   const [playlists, setPlaylists]       = useState<Playlist[]>([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [isLooping, setIsLooping] = useState(false); // Loop the hook
   const [newPlaylistName, setNewPlaylistName]     = useState("");
   const [playlistMessage, setPlaylistMessage]     = useState("");
 
@@ -114,10 +115,15 @@ export default function HomePage() {
         audioRef.current.currentTime = currentHook.hookStart;
         audioRef.current.ontimeupdate = () => {
           if (audioRef.current && audioRef.current.currentTime >= currentHook.hookEnd) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = currentHook.hookStart;
-            setIsPlaying(false);
-            setIsVibing(false);
+            if (isLooping) {
+              // Loop back to hook start
+              audioRef.current.currentTime = currentHook.hookStart;
+            } else {
+              audioRef.current.pause();
+              audioRef.current.currentTime = currentHook.hookStart;
+              setIsPlaying(false);
+              setIsVibing(false);
+            }
           }
         };
         audioRef.current.onended = () => { setIsPlaying(false); setIsVibing(false); };
@@ -442,6 +448,19 @@ export default function HomePage() {
                   <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
                     <span className="text-3xl text-gray-400 group-hover:scale-125 transition-transform">📤</span>
                     <span className="text-xs text-gray-500">share</span>
+                  </button>
+
+                  {/* Loop button */}
+                  <button
+                    onClick={() => setIsLooping((p) => !p)}
+                    className="flex flex-col items-center gap-1 group"
+                  >
+                    <span className={`text-3xl transition-transform duration-200 group-hover:scale-125 ${
+                      isLooping ? "text-[#90e0ef]" : "text-gray-400"
+                    }`}>
+                      🔁
+                    </span>
+                    <span className="text-xs text-gray-500">{isLooping ? "looping" : "loop"}</span>
                   </button>
 
                   <button onClick={() => setShowPlaylistModal(true)} className="flex flex-col items-center gap-1 group">
