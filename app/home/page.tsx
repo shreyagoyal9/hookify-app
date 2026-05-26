@@ -93,7 +93,7 @@ export default function HomePage() {
     getUser();
   }, []);
 
-  // ── Clean up audio ─────────────────────────────────────────────
+  // ── Clean up audio ─────────────────────────────────────────────-
   useEffect(() => {
     return () => { audioRef.current?.pause(); };
   }, []);
