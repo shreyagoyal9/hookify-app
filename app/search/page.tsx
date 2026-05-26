@@ -7,6 +7,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Track } from "@/lib/itunes";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase";
 
 const GRADIENTS = [
   "from-[#1a0533] via-[#2d1b69] to-[#0d1b2a]",
@@ -118,7 +119,7 @@ export default function SearchPage() {
   };
 
   // ── Play / pause ───────────────────────────────────────────────
-  const togglePlay = (track: SearchTrack) => {
+  const togglePlay = async (track: SearchTrack) => {
     if (!track.previewUrl) return;
 
     if (isPlaying && audio) {
@@ -147,6 +148,17 @@ export default function SearchPage() {
     newAudio.play();
     setAudio(newAudio);
     setIsPlaying(true);
+    // Track this play in database
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      supabase.from("hook_plays").insert({
+        user_id:    user.id,
+        user_email: user.email,
+        track_id:   track.id,
+        title:      track.title,
+        artist:     track.artist,
+      });
+    }
   };
 
   // ── Close full card ────────────────────────────────────────────
@@ -280,15 +292,17 @@ export default function SearchPage() {
                   <span className="text-xs text-gray-500">playlist</span>
                 </button>
               </div>
+
+              {/* Swipe hints */}
+              <div className="mt-6 text-center">
+                <p className="text-gray-600 text-xs">↓ swipe down to close · ↑ swipe up for next</p>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Swipe hints */}
-              <div className="mt-6 text-center">
-                <p className="text-gray-600 text-xs">↓ swipe down to close · ↑ swipe up for next</p>
-              </div>
+      
 
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
