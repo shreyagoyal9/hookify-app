@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="public/Elephant_Beats.jpeg" alt="Hookify Logo" width="20"/>
+<img src="public/Elephant_Beats.jpeg" alt="Hookify Logo" width="120"/>
 
 ### *just the hook. 15 seconds. the best part. skip everything else.*
 
