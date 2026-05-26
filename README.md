@@ -94,6 +94,7 @@ The model runs on a **FastAPI server deployed on Railway**, called automatically
 ---
 
 ## 🏗️ System Architecture
+'''
 ┌─────────────────────────────────────────────────────┐
 │                    USER                             │
 └──────────────────────┬──────────────────────────────┘
