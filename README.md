@@ -94,7 +94,7 @@ The model runs on a **FastAPI server deployed on Railway**, called automatically
 ---
 
 ## 🏗️ System Architecture
-'''
+```text
 ┌─────────────────────────────────────────────────────┐
 │                    USER                             │
 └──────────────────────┬──────────────────────────────┘
@@ -128,6 +128,7 @@ The model runs on a **FastAPI server deployed on Railway**, called automatically
 │ music feed   │
 │ (auto-update)│
 └──────────────┘
+```
 
 ---
 
