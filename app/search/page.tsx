@@ -1,6 +1,5 @@
 // app/search/page.tsx
-// Search page — fast results first, AI hook detection in background!
-// Results appear instantly, hook timestamps update as AI processes each song
+// Search page — fast results, click any song to open full card view!
 
 "use client";
 
@@ -9,7 +8,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { type Track } from "@/lib/itunes";
 import Image from "next/image";
 
-// ── Gradients for cards ──────────────────────────────────────────
 const GRADIENTS = [
   "from-[#1a0533] via-[#2d1b69] to-[#0d1b2a]",
   "from-[#0d2137] via-[#1a3a4a] to-[#0a1628]",
@@ -21,59 +19,58 @@ const GRADIENTS = [
 type SearchTrack = Track & { aiDetecting?: boolean };
 
 export default function SearchPage() {
-  const [query, setQuery]             = useState("");
-  const [results, setResults]         = useState<SearchTrack[]>([]);
-  const [loading, setLoading]         = useState(false);
-  const [playingId, setPlayingId]     = useState<number | null>(null);
-  const [audio, setAudio]             = useState<HTMLAudioElement | null>(null);
-  const [error, setError]             = useState("");
-  const [showModal, setShowModal]     = useState(false);
+  const [query, setQuery]                 = useState("");
+  const [results, setResults]             = useState<SearchTrack[]>([]);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState("");
   const [selectedTrack, setSelectedTrack] = useState<SearchTrack | null>(null);
+  const [isPlaying, setIsPlaying]         = useState(false);
+  const [isLooping, setIsLooping]         = useState(false);
+  const [audio, setAudio]                 = useState<HTMLAudioElement | null>(null);
 
-  // ── Search — show results instantly, AI in background ──────────
+  // ── Search ─────────────────────────────────────────────────────
   const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
     setError("");
     setResults([]);
     audio?.pause();
-    setPlayingId(null);
+    setIsPlaying(false);
+    setSelectedTrack(null);
 
     try {
-      // Step 1: Search iTunes via our API route (fast!)
       const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       const data     = await response.json();
 
       if (!data.results?.length) {
-        setError("No songs found! Try a different search.");
+        setError("No songs found!");
         setLoading(false);
         return;
       }
 
-      // Step 2: Show results IMMEDIATELY with default timestamps
+      // Show results instantly with default timestamps
       const initialTracks: SearchTrack[] = data.results
         .filter((t: any) => t.previewUrl)
-        .slice(0, 6)
+        .slice(0, 8)
         .map((track: any, i: number) => ({
-          id:           track.trackId,
-          title:        track.trackName,
-          artist:       track.artistName,
-          album:        track.collectionName,
-          albumArt:     track.artworkUrl100?.replace("100x100", "400x400") ?? "",
-          previewUrl:   track.previewUrl,
-          hookStart:    5,   // Default — AI will update this
-          hookEnd:      20,  // Default — AI will update this
-          gradient:     GRADIENTS[i % GRADIENTS.length],
-          liked:        false,
-          aiDetecting:  true, // Show loading indicator
+          id:          track.trackId,
+          title:       track.trackName,
+          artist:      track.artistName,
+          album:       track.collectionName,
+          albumArt:    track.artworkUrl100?.replace("100x100", "400x400") ?? "",
+          previewUrl:  track.previewUrl,
+          hookStart:   5,
+          hookEnd:     20,
+          gradient:    GRADIENTS[i % GRADIENTS.length],
+          liked:       false,
+          aiDetecting: true,
         }));
 
       setResults(initialTracks);
       setLoading(false);
 
-      // Step 3: Detect hooks in background for each track
-      // UI is already showing — this just updates timestamps quietly
-      initialTracks.forEach(async (track, i) => {
+      // Detect hooks in background
+      initialTracks.forEach(async (track) => {
         try {
           const aiResponse = await fetch("/api/detect-hook", {
             method:  "POST",
@@ -81,9 +78,7 @@ export default function SearchPage() {
             body:    JSON.stringify({ previewUrl: track.previewUrl }),
           });
           const aiResult = await aiResponse.json();
-
           if (aiResult.success) {
-            // Update just this track's timestamps
             setResults((prev) =>
               prev.map((t) =>
                 t.id === track.id
@@ -91,8 +86,13 @@ export default function SearchPage() {
                   : t
               )
             );
+            // Update selected track timestamps too if it's open
+            setSelectedTrack((prev) =>
+              prev?.id === track.id
+                ? { ...prev, hookStart: aiResult.hook_start, hookEnd: aiResult.hook_end, aiDetecting: false }
+                : prev
+            );
           } else {
-            // AI failed — remove detecting indicator
             setResults((prev) =>
               prev.map((t) => t.id === track.id ? { ...t, aiDetecting: false } : t)
             );
@@ -105,101 +105,206 @@ export default function SearchPage() {
       });
 
     } catch {
-      setError("Something went wrong. Try again!");
+      setError("Something went wrong!");
       setLoading(false);
     }
   };
 
-  // ── Play hook ──────────────────────────────────────────────────
-  const playHook = (track: SearchTrack) => {
+  // ── Open full card for a track ─────────────────────────────────
+  const openCard = (track: SearchTrack) => {
     audio?.pause();
-    if (playingId === track.id) {
-      setPlayingId(null);
-      return;
-    }
-    const newAudio = new Audio(track.previewUrl);
-    newAudio.currentTime = track.hookStart;
-    newAudio.ontimeupdate = () => {
-      if (newAudio.currentTime >= track.hookEnd) {
-        newAudio.pause();
-        setPlayingId(null);
-      }
-    };
-    newAudio.play();
-    setAudio(newAudio);
-    setPlayingId(track.id);
+    setIsPlaying(false);
+    setSelectedTrack(track);
   };
 
-  // ── Open options modal ─────────────────────────────────────────
-  const openModal = (track: SearchTrack) => {
-    setSelectedTrack(track);
-    setShowModal(true);
+  // ── Play / pause ───────────────────────────────────────────────
+  const togglePlay = (track: SearchTrack) => {
+    if (!track.previewUrl) return;
+
+    if (isPlaying && audio) {
+      audio.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    // Create new audio
+    const newAudio = new Audio(track.previewUrl);
+    newAudio.currentTime = track.hookStart;
+
+    newAudio.ontimeupdate = () => {
+      if (newAudio.currentTime >= track.hookEnd) {
+        if (isLooping) {
+          // Loop back to hook start
+          newAudio.currentTime = track.hookStart;
+        } else {
+          newAudio.pause();
+          setIsPlaying(false);
+        }
+      }
+    };
+
+    newAudio.onended = () => setIsPlaying(false);
+    newAudio.play();
+    setAudio(newAudio);
+    setIsPlaying(true);
+  };
+
+  // ── Close full card ────────────────────────────────────────────
+  const closeCard = () => {
+    audio?.pause();
+    setIsPlaying(false);
+    setSelectedTrack(null);
   };
 
   return (
     <main className="min-h-screen bg-[#0a0e1a] text-white flex flex-col">
 
-      {/* ── OPTIONS MODAL ───────────────────────────────────────── */}
-      {showModal && selectedTrack && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-end justify-center px-4 pb-8">
+      {/* ── FULL CARD VIEW ──────────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedTrack && (
           <motion.div
-            initial={{ opacity: 0, y: 100 }}
+            initial={{ opacity: 0, y: "100%" }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0e2a3b] rounded-3xl p-6 w-full max-w-sm border border-[#90e0ef]/20"
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.1}
+            dragMomentum={false}
+            onDragEnd={(_, info) => {
+              // Swipe down → close card (go back to results)
+              if (info.offset.y > 80 || info.velocity.y > 300) {
+                closeCard();
+              }
+              // Swipe up → next song in results
+              if (info.offset.y < -80 || info.velocity.y < -300) {
+                const currentIdx = results.findIndex((t) => t.id === selectedTrack?.id);
+                if (currentIdx < results.length - 1) {
+                  audio?.pause();
+                  setIsPlaying(false);
+                  setSelectedTrack(results[currentIdx + 1]);
+                }
+              }
+            }}
+            className="fixed inset-0 z-50 bg-[#0a0e1a] flex flex-col cursor-grab active:cursor-grabbing"
           >
-            {/* Song info */}
-            <div className="flex items-center gap-3 mb-6">
-              <img src={selectedTrack.albumArt} alt="" className="w-12 h-12 rounded-xl object-cover" />
-              <div>
-                <p className="font-medium">{selectedTrack.title}</p>
-                <p className="text-sm text-gray-400">{selectedTrack.artist}</p>
-              </div>
+            {/* Back button */}
+            <div className="flex items-center justify-between px-6 py-4">
+              <button onClick={closeCard} className="text-gray-400 hover:text-white text-sm flex items-center gap-2">
+                ← back to results
+              </button>
+              <span className="text-xs text-gray-600">🤖 AI detected hook</span>
             </div>
 
-            {/* Options */}
-            <div className="flex flex-col gap-2">
+            {/* Card content */}
+            <div className={`flex-1 flex flex-col items-center justify-center px-6 bg-gradient-to-b ${selectedTrack.gradient}`}>
+
+              {/* Spinning vinyl */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div
+                    className={`w-72 h-72 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${isPlaying ? "animate-spin" : ""}`}
+                    style={{ animationDuration: "4s" }}
+                  >
+                    <div className="w-64 h-64 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
+                      style={{ background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)" }}>
+                      <div className="w-52 h-52 rounded-full border border-white/5 flex items-center justify-center">
+                        <div className="w-40 h-40 rounded-full border border-white/5 flex items-center justify-center">
+                          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
+                            <img src={selectedTrack.albumArt} alt={selectedTrack.album} className="w-full h-full object-cover" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#0a0e1a] border border-white/20" />
+                </div>
+              </div>
+
+              {/* Song info */}
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-medium mb-1">{selectedTrack.title}</h2>
+                <p className="text-[#90e0ef] text-base mb-0.5">{selectedTrack.artist}</p>
+                <p className="text-gray-500 text-sm">{selectedTrack.album}</p>
+              </div>
+
+              {/* Hook timestamp */}
+              <div className="flex items-center gap-3 mb-6">
+                {selectedTrack.aiDetecting ? (
+                  <span className="text-yellow-400 text-xs animate-pulse">🤖 detecting hook...</span>
+                ) : (
+                  <span className="text-xs text-[#90e0ef] bg-[#90e0ef]/10 px-3 py-1 rounded-full">
+                    🤖 hook: {selectedTrack.hookStart}s – {selectedTrack.hookEnd}s
+                  </span>
+                )}
+              </div>
+
+              {/* Play button */}
+              <div className="flex justify-center mb-6">
+                <button
+                  onClick={() => togglePlay(selectedTrack)}
+                  className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all duration-300 ${
+                    isPlaying
+                      ? "bg-[#90e0ef] text-[#0a0e1a] scale-110 shadow-[0_0_30px_rgba(144,224,239,0.6)]"
+                      : "bg-white/10 text-white hover:bg-[#90e0ef]/20 border border-white/20"
+                  }`}
+                >
+                  {isPlaying ? "⏸" : "▶"}
+                </button>
+              </div>
+
+              {/* Loop button */}
               <button
-                onClick={() => { playHook(selectedTrack); setShowModal(false); }}
-                className="w-full py-3 rounded-2xl bg-[#90e0ef] text-[#0a0e1a] font-bold text-sm"
+                onClick={() => setIsLooping((p) => !p)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all mb-6 ${
+                  isLooping
+                    ? "bg-[#90e0ef] text-[#0a0e1a] font-bold"
+                    : "bg-white/10 text-gray-400 hover:bg-white/20"
+                }`}
               >
-                ▶ play hook
+                🔁 {isLooping ? "looping on" : "loop off"}
               </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-full py-3 rounded-2xl bg-white/5 text-gray-400 text-sm hover:bg-white/10"
-              >
-                ❤️ save hook
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-full py-3 rounded-2xl bg-white/5 text-gray-400 text-sm hover:bg-white/10"
-              >
-                ➕ add to playlist
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-full py-3 rounded-2xl border border-white/10 text-gray-500 text-sm mt-2"
-              >
-                cancel
-              </button>
+
+              {/* Action buttons */}
+              <div className="flex justify-around items-center w-full max-w-xs">
+                <button className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">🤍</span>
+                  <span className="text-xs text-gray-500">save</span>
+                </button>
+                <button className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">📤</span>
+                  <span className="text-xs text-gray-500">share</span>
+                </button>
+                <button className="flex flex-col items-center gap-1">
+                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">➕</span>
+                  <span className="text-xs text-gray-500">playlist</span>
+                </button>
+              </div>
             </div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
+      {/* Swipe hints */}
+              <div className="mt-6 text-center">
+                <p className="text-gray-600 text-xs">↓ swipe down to close · ↑ swipe up for next</p>
+              </div>
 
       {/* ── NAVBAR ──────────────────────────────────────────────── */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
         <a href="/home">
-          <h1 className="text-2xl text-[#90e0ef] cursor-pointer hover:opacity-80 transition-opacity" style={{ fontFamily: "cursive" }}>Hookify</h1>
+          <h1 className="text-2xl text-[#90e0ef] cursor-pointer hover:opacity-80" style={{ fontFamily: "cursive" }}>
+            Hookify
+          </h1>
         </a>
         <a href="/home" className="text-gray-400 text-sm hover:text-white">← back</a>
       </nav>
 
-      {/* ── SEARCH BAR — at the top! ─────────────────────────────── */}
+      {/* ── SEARCH BAR ──────────────────────────────────────────── */}
       <div className="px-6 pt-6 pb-4 max-w-2xl mx-auto w-full">
         <h2 className="text-xl font-medium mb-1">find any hook 🎵</h2>
         <p className="text-gray-500 text-xs mb-4">
-          results appear instantly — AI detects hooks in background 🤖
+          results appear instantly — tap any song to open full card 🎴
         </p>
         <div className="flex gap-2">
           <input
@@ -208,7 +313,7 @@ export default function SearchPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="flex-1 px-5 py-3 rounded-full bg-[#131929] border border-[#90e0ef]/20 text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] transition-colors text-sm"
+            className="flex-1 px-5 py-3 rounded-full bg-[#131929] border border-[#90e0ef]/20 text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] text-sm"
           />
           <button
             onClick={handleSearch}
@@ -221,7 +326,7 @@ export default function SearchPage() {
         {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
       </div>
 
-      {/* ── RESULTS ─────────────────────────────────────────────── */}
+      {/* ── RESULTS LIST ────────────────────────────────────────── */}
       <div className="flex-1 px-6 max-w-2xl mx-auto w-full">
         {loading && (
           <div className="text-center py-8">
@@ -235,7 +340,7 @@ export default function SearchPage() {
           {results.length > 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
               <p className="text-gray-500 text-xs mb-1">
-                {results.length} results — tap ▶ to play hook, ··· for options
+                {results.length} results — tap to open full card
               </p>
 
               {results.map((track) => (
@@ -243,64 +348,39 @@ export default function SearchPage() {
                   key={track.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`bg-gradient-to-r ${track.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-3`}
+                  // Click anywhere on card → open full card
+                  onClick={() => openCard(track)}
+                  className={`bg-gradient-to-r ${track.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-3 cursor-pointer hover:border-[#90e0ef]/40 transition-all active:scale-95`}
                 >
-                  {/* Album art — spins when playing */}
+                  {/* Album art */}
                   <img
                     src={track.albumArt}
                     alt={track.album}
-                    className={`w-12 h-12 rounded-full object-cover border-2 flex-shrink-0 transition-all ${
-                      playingId === track.id
-                        ? "border-[#90e0ef] animate-spin shadow-[0_0_15px_rgba(144,224,239,0.5)]"
-                        : "border-white/20"
-                    }`}
-                    style={{ animationDuration: "4s" }}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white/20 flex-shrink-0"
                   />
 
                   {/* Song info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{track.title}</p>
                     <p className="text-xs text-gray-400 truncate">{track.artist}</p>
-                    {/* AI timestamp badge */}
                     <div className="mt-1">
                       {track.aiDetecting ? (
-                        <span className="text-xs text-yellow-400 animate-pulse">🤖 detecting hook...</span>
+                        <span className="text-xs text-yellow-400 animate-pulse">🤖 detecting...</span>
                       ) : (
-                        <span className="text-xs text-[#90e0ef]">
-                          🤖 {track.hookStart}s–{track.hookEnd}s
-                        </span>
+                        <span className="text-xs text-[#90e0ef]">🤖 {track.hookStart}s–{track.hookEnd}s</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Buttons */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Play button */}
-                    <button
-                      onClick={() => playHook(track)}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm transition-all ${
-                        playingId === track.id
-                          ? "bg-[#90e0ef] text-[#0a0e1a]"
-                          : "bg-white/10 text-white hover:bg-[#90e0ef]/20"
-                      }`}
-                    >
-                      {playingId === track.id ? "⏸" : "▶"}
-                    </button>
-
-                    {/* 3 dots — options */}
-                    <button
-                      onClick={() => openModal(track)}
-                      className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:bg-white/20 text-lg"
-                    >
-                      ···
-                    </button>
-                  </div>
+                  {/* Arrow indicator */}
+                  <span className="text-gray-500 text-lg flex-shrink-0">›</span>
                 </motion.div>
               ))}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
     </main>
   );
 }
