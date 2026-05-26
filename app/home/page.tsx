@@ -138,10 +138,11 @@ export default function HomePage() {
       // We use a separate async call so it doesn't slow down playback
       if (userId && currentHook) {
         supabase.from("hook_plays").insert({
-          user_id:  userId,
-          track_id: currentHook.id,
-          title:    currentHook.title,
-          artist:   currentHook.artist,
+          user_id:    userId,
+          user_email: userEmail,
+          track_id:   currentHook.id,
+          title:      currentHook.title,
+          artist:     currentHook.artist,
         }).then(({ error }) => {
           if (error) console.error("Play tracking error:", error);
         });
