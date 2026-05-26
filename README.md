@@ -29,8 +29,7 @@ You open Spotify. A 3-minute song plays. You wait... and wait... for that **one 
 Hookify is a **TikTok-style music app** that plays only the hook (catchiest part) of trending songs — powered by a custom AI model that automatically detects where the hook starts and ends in any song.
 
 > 📸 **[Loading screen with elephant mascot]**
-> <img width="380" height="244" alt="Screenshot 2026-05-26 at 3 02 45 PM" src="https://github.com/user-attachments/assets/7eee7ed0-8836-47cc-9b33-f5a6e38c4bab" />
-
+> <img width="682" height="476" alt="Screenshot 2026-05-26 at 3 19 43 PM" src="https://github.com/user-attachments/assets/114568a4-3aa5-418f-9ba8-b214c608445b" />
 
 ---
 
@@ -48,19 +47,28 @@ Hookify is a **TikTok-style music app** that plays only the hook (catchiest part
 
 ## 📱 Screenshots
 
-> 📸 **[ADD SCREENSHOT: Login page]**
+> 📸 <img width="872" height="768" alt="Screenshot 2026-05-26 at 3 19 30 PM" src="https://github.com/user-attachments/assets/882e0bd3-a188-475e-a540-f6cc97180555" />
 
-> 📸 **[ADD SCREENSHOT: Home feed with spinning vinyl]**
 
-> 📸 **[ADD SCREENSHOT: Search page with AI timestamps]**
+> 📸 <img width="1470" height="836" alt="Screenshot 2026-05-26 at 3 22 17 PM" src="https://github.com/user-attachments/assets/bf065a96-6ddc-4b07-951a-9b0712e00274" />
 
-> 📸 **[ADD SCREENSHOT: Full card view with loop button]**
+>you can control pause play from the top right dancing elephant also.
+><img width="109" height="61" alt="Screenshot 2026-05-26 at 3 23 26 PM" src="https://github.com/user-attachments/assets/293f6fcb-cbab-41aa-af64-b46b6eb2aec5" />
 
-> 📸 **[ADD SCREENSHOT: Saved hooks tab]**
+
+> 📸 <img width="1470" height="835" alt="Screenshot 2026-05-26 at 3 25 14 PM" src="https://github.com/user-attachments/assets/90f4fbc5-dd4c-426b-89ea-f2f262ba6577" />
+
+
+> 📸 <img width="1470" height="829" alt="Screenshot 2026-05-26 at 3 25 52 PM" src="https://github.com/user-attachments/assets/207c59a8-a8be-4ec7-b83a-7cb56268e215" />
+
+
+> 📸 <img width="1469" height="834" alt="Screenshot 2026-05-26 at 3 27 12 PM" src="https://github.com/user-attachments/assets/b9a12dbc-8a9f-4a72-86fb-0562b59ae32c" />
+
 
 > 📸 **[ADD SCREENSHOT: Playlists tab]**
 
-> 📸 **[ADD SCREENSHOT: Admin dashboard]**
+> 📸 <img width="1470" height="883" alt="Screenshot 2026-05-26 at 3 29 29 PM" src="https://github.com/user-attachments/assets/e34a9f3a-bb56-437d-b4ef-0a0549337bea" />
+
 
 ---
 
