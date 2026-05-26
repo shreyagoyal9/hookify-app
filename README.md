@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Hookify Logo](public/Elephant_Beats.jpeg)height =10
+<img src="public/Elephant_Beats.jpeg" alt="Hookify Logo" width="20"/>
 
 ### *just the hook. 15 seconds. the best part. skip everything else.*
 
