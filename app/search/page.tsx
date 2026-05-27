@@ -1,9 +1,8 @@
 // app/search/page.tsx
-// Search page — fast results, click any song to open full card view!
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Track } from "@/lib/itunes";
 import Image from "next/image";
@@ -17,31 +16,78 @@ const GRADIENTS = [
   "from-[#0d1a2a] via-[#1a2d3a] to-[#0a1520]",
 ];
 
-type SearchTrack = Track & { aiDetecting?: boolean };
+type SearchTrack = Track & {
+  aiDetecting?: boolean;
+};
+
+type Playlist = {
+  id: string;
+  name: string;
+};
 
 export default function SearchPage() {
-  const [query, setQuery]                 = useState("");
-  const [results, setResults]             = useState<SearchTrack[]>([]);
-  const [loading, setLoading]             = useState(false);
-  const [error, setError]                 = useState("");
-  const [selectedTrack, setSelectedTrack] = useState<SearchTrack | null>(null);
-  const [isPlaying, setIsPlaying]         = useState(false);
-  const [isLooping, setIsLooping]         = useState(false);
-  const [audio, setAudio]                 = useState<HTMLAudioElement | null>(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchTrack[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // ── Search ─────────────────────────────────────────────────────
+  const [selectedTrack, setSelectedTrack] =
+    useState<SearchTrack | null>(null);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+
+  const [audio, setAudio] =
+    useState<HTMLAudioElement | null>(null);
+
+  // ── Playlist state ─────────────────────────────
+  const [userId, setUserId]                   = useState<string | null>(null);
+  const [playlists, setPlaylists]             = useState<Playlist[]>([]);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [playlistMessage, setPlaylistMessage] = useState("");
+  const [savedTracks, setSavedTracks]         = useState<Set<number>>(new Set());
+
+  // ── Load user + playlists on mount ─────────────
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data } = await supabase
+          .from("playlists")
+          .select("id, name")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true });
+        if (data) setPlaylists(data);
+        const { data: saved } = await supabase
+          .from("saved_hooks")
+          .select("track_id")
+          .eq("user_id", user.id);
+        if (saved) setSavedTracks(new Set(saved.map((r: any) => r.track_id)));
+      }
+    }
+    loadUser();
+  }, []);
+
+  // ── SEARCH ─────────────────────────────────────
   const handleSearch = async () => {
     if (!query.trim()) return;
+
     setLoading(true);
     setError("");
     setResults([]);
+
     audio?.pause();
     setIsPlaying(false);
     setSelectedTrack(null);
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      const data     = await response.json();
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(query)}`
+      );
+
+      const data = await response.json();
 
       if (!data.results?.length) {
         setError("No songs found!");
@@ -49,76 +95,105 @@ export default function SearchPage() {
         return;
       }
 
-      // Show results instantly with default timestamps
       const initialTracks: SearchTrack[] = data.results
         .filter((t: any) => t.previewUrl)
         .slice(0, 8)
         .map((track: any, i: number) => ({
-          id:          track.trackId,
-          title:       track.trackName,
-          artist:      track.artistName,
-          album:       track.collectionName,
-          albumArt:    track.artworkUrl100?.replace("100x100", "400x400") ?? "",
-          previewUrl:  track.previewUrl,
-          hookStart:   5,
-          hookEnd:     20,
-          gradient:    GRADIENTS[i % GRADIENTS.length],
-          liked:       false,
+          id: track.trackId,
+          title: track.trackName,
+          artist: track.artistName,
+          album: track.collectionName,
+          albumArt:
+            track.artworkUrl100?.replace(
+              "100x100",
+              "400x400"
+            ) ?? "",
+          previewUrl: track.previewUrl,
+          hookStart: 5,
+          hookEnd: 20,
+          gradient: GRADIENTS[i % GRADIENTS.length],
+          liked: false,
           aiDetecting: true,
         }));
 
       setResults(initialTracks);
       setLoading(false);
 
-      // Detect hooks in background
+      // AI hook detection
       initialTracks.forEach(async (track) => {
         try {
-          const aiResponse = await fetch("/api/detect-hook", {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ previewUrl: track.previewUrl }),
-          });
+          const aiResponse = await fetch(
+            "/api/detect-hook",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                previewUrl: track.previewUrl,
+              }),
+            }
+          );
+
           const aiResult = await aiResponse.json();
+
           if (aiResult.success) {
             setResults((prev) =>
               prev.map((t) =>
                 t.id === track.id
-                  ? { ...t, hookStart: aiResult.hook_start, hookEnd: aiResult.hook_end, aiDetecting: false }
+                  ? {
+                      ...t,
+                      hookStart: aiResult.hook_start,
+                      hookEnd: aiResult.hook_end,
+                      aiDetecting: false,
+                    }
                   : t
               )
             );
-            // Update selected track timestamps too if it's open
+
             setSelectedTrack((prev) =>
               prev?.id === track.id
-                ? { ...prev, hookStart: aiResult.hook_start, hookEnd: aiResult.hook_end, aiDetecting: false }
+                ? {
+                    ...prev,
+                    hookStart: aiResult.hook_start,
+                    hookEnd: aiResult.hook_end,
+                    aiDetecting: false,
+                  }
                 : prev
             );
           } else {
             setResults((prev) =>
-              prev.map((t) => t.id === track.id ? { ...t, aiDetecting: false } : t)
+              prev.map((t) =>
+                t.id === track.id
+                  ? { ...t, aiDetecting: false }
+                  : t
+              )
             );
           }
         } catch {
           setResults((prev) =>
-            prev.map((t) => t.id === track.id ? { ...t, aiDetecting: false } : t)
+            prev.map((t) =>
+              t.id === track.id
+                ? { ...t, aiDetecting: false }
+                : t
+            )
           );
         }
       });
-
     } catch {
       setError("Something went wrong!");
       setLoading(false);
     }
   };
 
-  // ── Open full card for a track ─────────────────────────────────
+  // ── OPEN SONG CARD ───────────────────────────
   const openCard = (track: SearchTrack) => {
     audio?.pause();
     setIsPlaying(false);
     setSelectedTrack(track);
   };
 
-  // ── Play / pause ───────────────────────────────────────────────
+  // ── PLAY / PAUSE ─────────────────────────────
   const togglePlay = async (track: SearchTrack) => {
     if (!track.previewUrl) return;
 
@@ -128,14 +203,13 @@ export default function SearchPage() {
       return;
     }
 
-    // Create new audio
     const newAudio = new Audio(track.previewUrl);
+
     newAudio.currentTime = track.hookStart;
 
     newAudio.ontimeupdate = () => {
       if (newAudio.currentTime >= track.hookEnd) {
         if (isLooping) {
-          // Loop back to hook start
           newAudio.currentTime = track.hookStart;
         } else {
           newAudio.pause();
@@ -144,127 +218,278 @@ export default function SearchPage() {
       }
     };
 
-    newAudio.onended = () => setIsPlaying(false);
+    newAudio.onended = () => {
+      setIsPlaying(false);
+    };
+
     newAudio.play();
+
     setAudio(newAudio);
     setIsPlaying(true);
-    // Track this play in database
-    const { data: { user } } = await supabase.auth.getUser();
+
+    // Track play
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (user) {
       supabase.from("hook_plays").insert({
-        user_id:    user.id,
+        user_id: user.id,
         user_email: user.email,
-        track_id:   track.id,
-        title:      track.title,
-        artist:     track.artist,
+        track_id: track.id,
+        title: track.title,
+        artist: track.artist,
       });
     }
   };
 
-  // ── Close full card ────────────────────────────────────────────
+  // ── CLOSE CARD ───────────────────────────────
   const closeCard = () => {
     audio?.pause();
     setIsPlaying(false);
     setSelectedTrack(null);
   };
 
+  // ── SAVE hook ─────────────────────────────────
+  const handleSave = async (track: SearchTrack) => {
+    if (!userId) return;
+    if (savedTracks.has(track.id)) return; // already saved
+    const { error } = await supabase.from("saved_hooks").insert({
+      user_id: userId,
+      track_id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      album_art: track.albumArt,
+      preview_url: track.previewUrl,
+      hook_start: track.hookStart,
+      hook_end: track.hookEnd,
+      gradient: track.gradient,
+    });
+    if (!error) {
+      setSavedTracks((prev) => new Set([...prev, track.id]));
+      setPlaylistMessage("Hook saved! 🤍→❤️");
+      setTimeout(() => setPlaylistMessage(""), 1500);
+    }
+  };
+
+  // ── SHARE hook ────────────────────────────────
+  const handleShare = async (track: SearchTrack) => {
+    const text = `🎵 Check out the hook of "${track.title}" by ${track.artist} on Hookify!`;
+    if (navigator.share) {
+      await navigator.share({ title: "Hookify", text, url: window.location.href });
+    } else {
+      await navigator.clipboard.writeText(text);
+      setPlaylistMessage("Link copied! 📤");
+      setTimeout(() => setPlaylistMessage(""), 1500);
+    }
+  };
+
+  // ── CREATE playlist ───────────────────────────
+  const createPlaylist = async () => {
+    if (!userId || !newPlaylistName.trim()) return;
+    const { data, error } = await supabase
+      .from("playlists")
+      .insert({ user_id: userId, name: newPlaylistName.trim() })
+      .select()
+      .single();
+    if (!error && data) {
+      setPlaylists((prev) => [...prev, data]);
+      setNewPlaylistName("");
+      setPlaylistMessage(`"${data.name}" created! ✅`);
+      window.setTimeout(() => {
+        setPlaylistMessage("");
+        setShowPlaylistModal(false);
+      }, 1500);
+    } else {
+      setPlaylistMessage("Error creating playlist 😕");
+      window.setTimeout(() => {
+        setPlaylistMessage("");
+        setShowPlaylistModal(false);
+      }, 1500);
+    }
+  };
+
+  // ── ADD to playlist ───────────────────────────
+  const addToPlaylist = async (playlistId: string, playlistName: string) => {
+    if (!userId || !selectedTrack) return;
+    const { error } = await supabase.from("playlist_tracks").insert({
+      playlist_id: playlistId,
+      user_id: userId,
+      track_id: selectedTrack.id,
+      title: selectedTrack.title,
+      artist: selectedTrack.artist,
+      album: selectedTrack.album,
+      album_art: selectedTrack.albumArt,
+      preview_url: selectedTrack.previewUrl,
+      hook_start: selectedTrack.hookStart,
+      hook_end: selectedTrack.hookEnd,
+      gradient: selectedTrack.gradient,
+    });
+    if (!error) {
+      setPlaylistMessage(`Added to "${playlistName}"! ✅`);
+      window.setTimeout(() => {
+        setPlaylistMessage("");
+        setShowPlaylistModal(false);
+      }, 1500);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#0a0e1a] text-white flex flex-col">
 
-      {/* ── FULL CARD VIEW ──────────────────────────────────────── */}
+      {/* ── FULL SCREEN PLAYER ───────────────── */}
       <AnimatePresence>
         {selectedTrack && (
           <motion.div
             initial={{ opacity: 0, y: "100%" }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: "100%" }}
-            transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{
+              duration: 0.35,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.1}
             dragMomentum={false}
+
             onDragEnd={(_, info) => {
-  const currentIdx = results.findIndex(
-    (t) => t.id === selectedTrack?.id
-  );
+              const currentIdx = results.findIndex(
+                (t) => t.id === selectedTrack?.id
+              );
 
-  // Swipe UP → next song
-  if (info.offset.y < -80 || info.velocity.y < -300) {
-    if (currentIdx < results.length - 1) {
-      audio?.pause();
-      setIsPlaying(false);
-      setSelectedTrack(results[currentIdx + 1]);
-    }
-  }
+              // ── SWIPE UP → NEXT SONG ─────────
+              if (
+                info.offset.y < -80 ||
+                info.velocity.y < -300
+              ) {
+                if (currentIdx < results.length - 1) {
+                  audio?.pause();
+                  setIsPlaying(false);
 
-  // Swipe DOWN → previous song
-  else if (info.offset.y > 80 || info.velocity.y > 300) {
-    if (currentIdx > 0) {
-      audio?.pause();
-      setIsPlaying(false);
-      setSelectedTrack(results[currentIdx - 1]);
-    } else {
-      closeCard();
-    }
-  }
-}}
+                  setSelectedTrack(
+                    results[currentIdx + 1]
+                  );
+                }
+              }
+
+              // ── SWIPE DOWN → PREVIOUS SONG ──
+              else if (
+                info.offset.y > 80 ||
+                info.velocity.y > 300
+              ) {
+                if (currentIdx > 0) {
+                  audio?.pause();
+                  setIsPlaying(false);
+
+                  setSelectedTrack(
+                    results[currentIdx - 1]
+                  );
+                } else {
+                  closeCard();
+                }
+              }
+            }}
+
+            style={{ pointerEvents: showPlaylistModal ? "none" : "auto" }}
             className="fixed inset-0 z-50 bg-[#0a0e1a] flex flex-col cursor-grab active:cursor-grabbing"
           >
-            {/* Back button */}
+            {/* TOP BAR */}
             <div className="flex items-center justify-between px-6 py-4">
-              <button onClick={closeCard} className="text-gray-400 hover:text-white text-sm flex items-center gap-2">
+              <button
+                onClick={closeCard}
+                className="text-gray-400 hover:text-white text-sm flex items-center gap-2"
+              >
                 ← back to results
               </button>
-              <span className="text-xs text-gray-600">🤖 AI detected hook</span>
+
+              <span className="text-xs text-gray-600">
+                🤖 AI detected hook
+              </span>
             </div>
 
-            {/* Card content */}
-            <div className={`flex-1 flex flex-col items-center justify-center px-6 bg-gradient-to-b ${selectedTrack.gradient}`}>
+            {/* CONTENT */}
+            <div
+              className={`flex-1 flex flex-col items-center justify-center px-6 bg-gradient-to-b ${selectedTrack.gradient}`}
+            >
 
-              {/* Spinning vinyl */}
+              {/* VINYL */}
               <div className="flex justify-center mb-6">
                 <div className="relative">
+
                   <div
-                    className={`w-72 h-72 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${isPlaying ? "animate-spin" : ""}`}
-                    style={{ animationDuration: "4s" }}
+                    className={`w-72 h-72 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${
+                      isPlaying ? "animate-spin" : ""
+                    }`}
+                    style={{
+                      animationDuration: "4s",
+                    }}
                   >
-                    <div className="w-64 h-64 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
-                      style={{ background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)" }}>
+                    <div
+                      className="w-64 h-64 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
+                      style={{
+                        background:
+                          "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)",
+                      }}
+                    >
                       <div className="w-52 h-52 rounded-full border border-white/5 flex items-center justify-center">
                         <div className="w-40 h-40 rounded-full border border-white/5 flex items-center justify-center">
+
                           <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
-                            <img src={selectedTrack.albumArt} alt={selectedTrack.album} className="w-full h-full object-cover" />
+                            <img
+                              src={selectedTrack.albumArt}
+                              alt={selectedTrack.album}
+                              className="w-full h-full object-cover"
+                            />
                           </div>
+
                         </div>
                       </div>
                     </div>
                   </div>
+
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#0a0e1a] border border-white/20" />
+
                 </div>
               </div>
 
-              {/* Song info */}
+              {/* SONG INFO */}
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-medium mb-1">{selectedTrack.title}</h2>
-                <p className="text-[#90e0ef] text-base mb-0.5">{selectedTrack.artist}</p>
-                <p className="text-gray-500 text-sm">{selectedTrack.album}</p>
+                <h2 className="text-2xl font-medium mb-1">
+                  {selectedTrack.title}
+                </h2>
+
+                <p className="text-[#90e0ef] text-base mb-0.5">
+                  {selectedTrack.artist}
+                </p>
+
+                <p className="text-gray-500 text-sm">
+                  {selectedTrack.album}
+                </p>
               </div>
 
-              {/* Hook timestamp */}
+              {/* HOOK */}
               <div className="flex items-center gap-3 mb-6">
                 {selectedTrack.aiDetecting ? (
-                  <span className="text-yellow-400 text-xs animate-pulse">🤖 detecting hook...</span>
+                  <span className="text-yellow-400 text-xs animate-pulse">
+                    🤖 detecting hook...
+                  </span>
                 ) : (
                   <span className="text-xs text-[#90e0ef] bg-[#90e0ef]/10 px-3 py-1 rounded-full">
-                    🤖 hook: {selectedTrack.hookStart}s – {selectedTrack.hookEnd}s
+                    🤖 hook:{" "}
+                    {selectedTrack.hookStart}s –{" "}
+                    {selectedTrack.hookEnd}s
                   </span>
                 )}
               </div>
 
-              {/* Play button */}
+              {/* PLAY BUTTON */}
               <div className="flex justify-center mb-6">
                 <button
-                  onClick={() => togglePlay(selectedTrack)}
+                  onClick={() =>
+                    togglePlay(selectedTrack)
+                  }
                   className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all duration-300 ${
                     isPlaying
                       ? "bg-[#90e0ef] text-[#0a0e1a] scale-110 shadow-[0_0_30px_rgba(144,224,239,0.6)]"
@@ -275,72 +500,134 @@ export default function SearchPage() {
                 </button>
               </div>
 
-              {/* Loop button */}
+              {/* LOOP */}
               <button
-                onClick={() => setIsLooping((p) => !p)}
+                onClick={() =>
+                  setIsLooping((p) => !p)
+                }
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all mb-6 ${
                   isLooping
                     ? "bg-[#90e0ef] text-[#0a0e1a] font-bold"
                     : "bg-white/10 text-gray-400 hover:bg-white/20"
                 }`}
               >
-                🔁 {isLooping ? "looping on" : "loop off"}
+                🔁{" "}
+                {isLooping
+                  ? "looping on"
+                  : "loop off"}
               </button>
 
-              {/* Action buttons */}
+              {/* ACTIONS */}
               <div className="flex justify-around items-center w-full max-w-xs">
-                <button className="flex flex-col items-center gap-1">
-                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">🤍</span>
-                  <span className="text-xs text-gray-500">save</span>
+
+                <button
+                  onClick={() => selectedTrack && handleSave(selectedTrack)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <span className="text-2xl hover:scale-125 transition-transform">
+                    {selectedTrack && savedTracks.has(selectedTrack.id) ? "❤️" : "🤍"}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    save
+                  </span>
                 </button>
-                <button className="flex flex-col items-center gap-1">
-                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">📤</span>
-                  <span className="text-xs text-gray-500">share</span>
+
+                <button
+                  onClick={() => selectedTrack && handleShare(selectedTrack)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">
+                    📤
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    share
+                  </span>
                 </button>
-                <button className="flex flex-col items-center gap-1">
-                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">➕</span>
-                  <span className="text-xs text-gray-500">playlist</span>
+
+                <button
+                  onClick={() => setShowPlaylistModal(true)}
+                  className="flex flex-col items-center gap-1"
+                >
+                  <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">
+                    ➕
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    playlist
+                  </span>
                 </button>
+
               </div>
 
-              {/* Swipe hints */}
+              {/* Feedback message */}
+              {playlistMessage && (
+                <p className="text-green-400 text-sm text-center mt-2 animate-pulse">
+                  {playlistMessage}
+                </p>
+              )}
+
+              {/* SWIPE TEXT */}
               <div className="mt-6 text-center">
                 <p className="text-gray-600 text-xs">
-  ↓ swipe down for previous · ↑ swipe up for next
-</p>
+                  ↓ swipe down for previous · ↑ swipe up for next
+                </p>
               </div>
+
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      
-
-      {/* ── NAVBAR ──────────────────────────────────────────────── */}
+      {/* ── NAVBAR ───────────────────────────── */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+
         <a href="/home">
-          <h1 className="text-2xl text-[#90e0ef] cursor-pointer hover:opacity-80" style={{ fontFamily: "cursive" }}>
+          <h1
+            className="text-2xl text-[#90e0ef] cursor-pointer hover:opacity-80"
+            style={{
+              fontFamily: "cursive",
+            }}
+          >
             Hookify
           </h1>
         </a>
-        <a href="/home" className="text-gray-400 text-sm hover:text-white">← back</a>
+
+        <a
+          href="/home"
+          className="text-gray-400 text-sm hover:text-white"
+        >
+          ← back
+        </a>
+
       </nav>
 
-      {/* ── SEARCH BAR ──────────────────────────────────────────── */}
+      {/* ── SEARCH ───────────────────────────── */}
       <div className="px-6 pt-6 pb-4 max-w-2xl mx-auto w-full">
-        <h2 className="text-xl font-medium mb-1">find any hook 🎵</h2>
+
+        <h2 className="text-xl font-medium mb-1">
+          find any hook 🎵
+        </h2>
+
         <p className="text-gray-500 text-xs mb-4">
-          results appear instantly — tap any song to open full card 🎴
+          results appear instantly — tap any song
+          to open full card 🎴
         </p>
+
         <div className="flex gap-2">
+
           <input
             type="text"
             placeholder="search any song or artist..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            onChange={(e) =>
+              setQuery(e.target.value)
+            }
+            onKeyDown={(e) =>
+              e.key === "Enter" &&
+              handleSearch()
+            }
             className="flex-1 px-5 py-3 rounded-full bg-[#131929] border border-[#90e0ef]/20 text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] text-sm"
           />
+
           <button
             onClick={handleSearch}
             disabled={loading}
@@ -348,64 +635,164 @@ export default function SearchPage() {
           >
             {loading ? "..." : "search"}
           </button>
+
         </div>
-        {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+
+        {error && (
+          <p className="text-red-400 text-xs mt-2">
+            {error}
+          </p>
+        )}
       </div>
 
-      {/* ── RESULTS LIST ────────────────────────────────────────── */}
+      {/* ── RESULTS ──────────────────────────── */}
       <div className="flex-1 px-6 max-w-2xl mx-auto w-full">
+
         {loading && (
           <div className="text-center py-8">
-            <Image src="/Elephant_Beats.jpeg" alt="Loading" width={50} height={50}
-              className="rounded-full border-2 border-[#90e0ef] animate-bounce mx-auto mb-3" />
-            <p className="text-[#90e0ef] text-sm animate-pulse">searching...</p>
+
+            <Image
+              src="/Elephant_Beats.jpeg"
+              alt="Loading"
+              width={50}
+              height={50}
+              className="rounded-full border-2 border-[#90e0ef] animate-bounce mx-auto mb-3"
+            />
+
+            <p className="text-[#90e0ef] text-sm animate-pulse">
+              searching...
+            </p>
+
           </div>
         )}
 
         <AnimatePresence>
           {results.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col gap-3"
+            >
+
               <p className="text-gray-500 text-xs mb-1">
-                {results.length} results — tap to open full card
+                {results.length} results — tap to
+                open full card
               </p>
 
               {results.map((track) => (
                 <motion.div
                   key={track.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  // Click anywhere on card → open full card
-                  onClick={() => openCard(track)}
+                  initial={{
+                    opacity: 0,
+                    y: 10,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  onClick={() =>
+                    openCard(track)
+                  }
                   className={`bg-gradient-to-r ${track.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-3 cursor-pointer hover:border-[#90e0ef]/40 transition-all active:scale-95`}
                 >
-                  {/* Album art */}
+
                   <img
                     src={track.albumArt}
                     alt={track.album}
                     className="w-12 h-12 rounded-full object-cover border-2 border-white/20 flex-shrink-0"
                   />
 
-                  {/* Song info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{track.title}</p>
-                    <p className="text-xs text-gray-400 truncate">{track.artist}</p>
+
+                    <p className="text-sm font-medium truncate">
+                      {track.title}
+                    </p>
+
+                    <p className="text-xs text-gray-400 truncate">
+                      {track.artist}
+                    </p>
+
                     <div className="mt-1">
                       {track.aiDetecting ? (
-                        <span className="text-xs text-yellow-400 animate-pulse">🤖 detecting...</span>
+                        <span className="text-xs text-yellow-400 animate-pulse">
+                          🤖 detecting...
+                        </span>
                       ) : (
-                        <span className="text-xs text-[#90e0ef]">🤖 {track.hookStart}s–{track.hookEnd}s</span>
+                        <span className="text-xs text-[#90e0ef]">
+                          🤖{" "}
+                          {track.hookStart}s–
+                          {track.hookEnd}s
+                        </span>
                       )}
                     </div>
+
                   </div>
 
-                  {/* Arrow indicator */}
-                  <span className="text-gray-500 text-lg flex-shrink-0">›</span>
+                  <span className="text-gray-500 text-lg flex-shrink-0">
+                    ›
+                  </span>
+
                 </motion.div>
               ))}
             </motion.div>
           )}
         </AnimatePresence>
+
       </div>
+
+      {/* ── PLAYLIST MODAL ─────────────────────────── */}
+      {showPlaylistModal && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center px-4">
+          <div className="bg-[#0e2a3b] rounded-3xl p-6 w-full max-w-sm border border-[#90e0ef]/20">
+            <h3 className="text-lg font-medium text-center mb-4 text-[#90e0ef]">
+              add to playlist ➕
+            </h3>
+            {playlistMessage && (
+              <p className="text-green-400 text-sm text-center mb-4">{playlistMessage}</p>
+            )}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="new playlist name..."
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createPlaylist()}
+                className="flex-1 px-4 py-2 rounded-full bg-[#0a0e1a] border border-[#90e0ef]/30 text-white text-sm outline-none focus:border-[#90e0ef]"
+              />
+              <button
+                onClick={createPlaylist}
+                className="px-4 py-2 rounded-full bg-[#90e0ef] text-[#0a0e1a] text-sm font-bold hover:opacity-90"
+              >
+                create
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+              {playlists.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-4">
+                  no playlists yet — create one above!
+                </p>
+              ) : (
+                playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    onClick={() => addToPlaylist(playlist.id, playlist.name)}
+                    className="w-full py-3 px-4 rounded-2xl bg-[#0a0e1a] border border-white/10 text-left text-sm hover:border-[#90e0ef]/40 transition-all flex items-center gap-3"
+                  >
+                    <span className="text-lg">🎵</span>
+                    <span>{playlist.name}</span>
+                  </button>
+                ))
+              )}
+            </div>
+            <button
+              onClick={() => { setShowPlaylistModal(false); setNewPlaylistName(""); setPlaylistMessage(""); }}
+              className="w-full mt-4 py-2 rounded-full border border-white/10 text-gray-400 text-sm hover:bg-white/5"
+            >
+              cancel
+            </button>
+          </div>
+        </div>
+      )}
 
     </main>
   );

@@ -1,4 +1,4 @@
-// app/home/page.tsx
+ // app/home/page.tsx
 // Main home page — TikTok swipe feed with REAL music from iTunes API
 // Features: real audio, saved hooks, playlists, share, logout
 
@@ -280,7 +280,7 @@ export default function HomePage() {
 
       {/* ── PLAYLIST MODAL ──────────────────────────────────────── */}
       {showPlaylistModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center px-4">
           <div className="bg-[#0e2a3b] rounded-3xl p-6 w-full max-w-sm border border-[#90e0ef]/20">
             <h3 className="text-lg font-medium text-center mb-4 text-[#90e0ef]">
               add to playlist ➕
@@ -376,7 +376,7 @@ export default function HomePage() {
                   else if (info.offset.x > swipeThreshold || info.velocity.x > swipeVelocity) swipePrev();
                 }}
                 className={`bg-gradient-to-br ${currentHook.gradient} rounded-3xl p-8 border border-white/10 cursor-grab active:cursor-grabbing flex flex-col justify-between min-h-[78vh]`}
-                style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}
+                style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)", pointerEvents: showPlaylistModal ? "none" : "auto" }}
               >
                 {/* Vinyl */}
                 <div className="flex justify-center mb-4">
