@@ -375,25 +375,24 @@ const openPlaylistDetail = (playlist: Playlist) => {
             </div>
 
             <AnimatePresence mode="wait">
-              {activeTab === "home" && <motion.div
+              <div
                 key={currentHook.id}
-                initial={{ opacity: 0, x: direction === "left" ? 400 : -400 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: direction === "left" ? -400 : 400 }}
-                transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.1}
-                dragMomentum={false}
-                whileDrag={{ scale: 0.98, cursor: "grabbing" }}
-                onDragEnd={(_, info) => {
-                  const swipeThreshold = 60;
-                  const swipeVelocity = 200;
-                  if (info.offset.x < -swipeThreshold || info.velocity.x < -swipeVelocity) swipeNext();
-                  else if (info.offset.x > swipeThreshold || info.velocity.x > swipeVelocity) swipePrev();
+                onTouchStart={(e) => { (e.currentTarget as any)._startX = e.touches[0].clientX; }}
+                onTouchEnd={(e) => {
+                  const startX = (e.currentTarget as any)._startX;
+                  const diff = e.changedTouches[0].clientX - startX;
+                  if (diff < -60) swipeNext();
+                  else if (diff > 60) swipePrev();
                 }}
-                className={`bg-gradient-to-br ${currentHook.gradient} rounded-3xl p-8 border border-white/10 cursor-grab active:cursor-grabbing flex flex-col justify-between min-h-[78vh]`}
-                style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)", pointerEvents: showPlaylistModal ? "none" : "auto" }}
+                onMouseDown={(e) => { (e.currentTarget as any)._startX = e.clientX; }}
+                onMouseUp={(e) => {
+                  const startX = (e.currentTarget as any)._startX;
+                  const diff = e.clientX - startX;
+                  if (diff < -60) swipeNext();
+                  else if (diff > 60) swipePrev();
+                }}
+                className={`bg-gradient-to-br ${currentHook.gradient} rounded-3xl p-8 border border-white/10 cursor-grab flex flex-col justify-between min-h-[78vh]`}
+                style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}
               >
                 {/* Vinyl */}
                 <div className="flex justify-center mb-4">
@@ -486,7 +485,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     <span className="text-xs text-gray-500">playlist</span>
                   </button>
                 </div>
-              </motion.div>}
+              </div>
             </AnimatePresence>
             <p className="text-center text-gray-600 text-xs mt-3">← drag to swipe hooks →</p>
           </div>
