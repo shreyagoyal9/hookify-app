@@ -25,23 +25,40 @@ type Stats = {
   users:          UserStat[];
 };
 
-const ADMIN_PASSWORD = "hookify2024";
+
 
 export default function AdminPage() {
   const [authed, setAuthed]         = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
   const [stats, setStats]   = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const handleLogin = () => {
-    if (passwordInput === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setPasswordError("");
-    } else {
-      setPasswordError("Wrong password. Try again.");
-      setPasswordInput("");
+  useEffect(() => {
+    const saved = sessionStorage.getItem("hookify_admin_authed");
+    if (saved === "true") setAuthed(true);
+    setCheckingSession(false);
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      const res = await fetch("/api/admin-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+      if (res.ok) {
+        sessionStorage.setItem("hookify_admin_authed", "true");
+        setAuthed(true);
+        setPasswordError("");
+      } else {
+        setPasswordError("Wrong password. Try again.");
+        setPasswordInput("");
+      }
+    } catch {
+      setPasswordError("Something went wrong. Try again.");
     }
   };
 
@@ -110,6 +127,14 @@ export default function AdminPage() {
 
     fetchStats();
   }, []);
+
+  if (checkingSession) {
+    return (
+      <main className="min-h-screen bg-[#0a0e1a] text-white flex items-center justify-center">
+        <p className="text-[#90e0ef] animate-pulse">loading...</p>
+      </main>
+    );
+  }
 
   if (!authed) {
     return (
