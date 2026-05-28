@@ -186,6 +186,18 @@ export default function SearchPage() {
 
   const addToPlaylist = async (playlistId: string, playlistName: string) => {
     if (!userId || !selectedTrack) return;
+    // Check for duplicate
+    const { data: existing } = await supabase
+      .from("playlist_tracks")
+      .select("id")
+      .eq("playlist_id", playlistId)
+      .eq("track_id", selectedTrack.id)
+      .maybeSingle();
+    if (existing) {
+      setPlaylistMessage(`Already in "${playlistName}"! 🎵`);
+      window.setTimeout(() => { setPlaylistMessage(""); setShowPlaylistModal(false); }, 1500);
+      return;
+    }
     const { error } = await supabase.from("playlist_tracks").insert({
       playlist_id: playlistId, user_id: userId, track_id: selectedTrack.id,
       title: selectedTrack.title, artist: selectedTrack.artist, album: selectedTrack.album,
@@ -386,7 +398,10 @@ export default function SearchPage() {
                         }
                       </div>
                     </div>
-                    <span className="text-gray-500 text-lg flex-shrink-0">›</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-base">{savedTracks.has(track.id) ? "❤️" : "🤍"}</span>
+                      <span className="text-gray-500 text-lg">›</span>
+                    </div>
                   </motion.div>
                 ))}
               </motion.div>

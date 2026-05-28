@@ -25,10 +25,25 @@ type Stats = {
   users:          UserStat[];
 };
 
+const ADMIN_PASSWORD = "hookify2024";
+
 export default function AdminPage() {
+  const [authed, setAuthed]         = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [stats, setStats]   = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const handleLogin = () => {
+    if (passwordInput === ADMIN_PASSWORD) {
+      setAuthed(true);
+      setPasswordError("");
+    } else {
+      setPasswordError("Wrong password. Try again.");
+      setPasswordInput("");
+    }
+  };
 
   useEffect(() => {
     async function fetchStats() {
@@ -95,6 +110,31 @@ export default function AdminPage() {
 
     fetchStats();
   }, []);
+
+  if (!authed) {
+    return (
+      <main className="min-h-screen bg-[#0a0e1a] text-white flex items-center justify-center px-4">
+        <div className="bg-[#0e2a3b] rounded-3xl p-8 w-full max-w-sm border border-[#90e0ef]/20 text-center">
+          <h1 className="text-2xl text-[#90e0ef] mb-2" style={{ fontFamily: "cursive" }}>Hookify Admin 🐘</h1>
+          <p className="text-gray-400 text-sm mb-6">enter the admin password to continue</p>
+          <input
+            type="password"
+            placeholder="password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+            className="w-full px-4 py-3 rounded-full bg-[#0a0e1a] border border-[#90e0ef]/30 text-white text-sm outline-none focus:border-[#90e0ef] mb-3"
+          />
+          {passwordError && <p className="text-red-400 text-xs mb-3">{passwordError}</p>}
+          <button
+            onClick={handleLogin}
+            className="w-full py-3 rounded-full bg-[#90e0ef] text-[#0a0e1a] font-bold text-sm hover:opacity-90 transition-all">
+            enter
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   if (loading) {
     return (

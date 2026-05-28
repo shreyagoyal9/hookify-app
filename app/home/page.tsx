@@ -35,6 +35,11 @@ export default function HomePage() {
   const [openPlaylist, setOpenPlaylist]       = useState<Playlist | null>(null);
   const [playlistTracks, setPlaylistTracks]   = useState<any[]>([]);
   const [loadingTracks, setLoadingTracks]     = useState(false);
+  const [savedHooksFull, setSavedHooksFull]   = useState<any[]>([]);
+  const [totalPlays, setTotalPlays]           = useState<number>(0);
+  const [savedAudio, setSavedAudio]           = useState<HTMLAudioElement | null>(null);
+  const [shareToast, setShareToast]           = useState("");
+  const [playlistCounts, setPlaylistCounts]   = useState<Record<string, number>>({});
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -83,15 +88,45 @@ export default function HomePage() {
       if (user) {
         setUserId(user.id);
         setUserEmail(user.email ?? "");
+
+        // Saved track IDs (for liked heart on feed)
         const { data: savedData } = await supabase
           .from("saved_hooks")
           .select("track_id")
           .eq("user_id", user.id);
         if (savedData) setSavedHooks(savedData.map((r) => r.track_id));
+
+        // Full saved hook rows (for Saved tab)
+        const { data: savedFull } = await supabase
+          .from("saved_hooks")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        if (savedFull) setSavedHooksFull(savedFull);
+
+        // Total play count for profile
+        const { count: playsCount } = await supabase
+          .from("hook_plays")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        setTotalPlays(playsCount ?? 0);
+
         const { data: playlistData } = await supabase
           .from("playlists").select("id, name").eq("user_id", user.id)
           .order("created_at", { ascending: true });
-        if (playlistData) setPlaylists(playlistData);
+        if (playlistData) {
+          setPlaylists(playlistData);
+          // Load track counts for each playlist
+          const counts: Record<string, number> = {};
+          await Promise.all(playlistData.map(async (pl) => {
+            const { count } = await supabase
+              .from("playlist_tracks")
+              .select("*", { count: "exact", head: true })
+              .eq("playlist_id", pl.id);
+            counts[pl.id] = count ?? 0;
+          }));
+          setPlaylistCounts(counts);
+        }
       }
     }
     getUser();
@@ -138,7 +173,6 @@ export default function HomePage() {
       setIsVibing(true);
 
       // ── Track this play in database ───────────────────────────
-      // We use a separate async call so it doesn't slow down playback
       if (userId && currentHook) {
         supabase.from("hook_plays").insert({
           user_id:    userId,
@@ -148,16 +182,6 @@ export default function HomePage() {
           artist:     currentHook.artist,
         }).then(({ error }) => {
           if (error) console.error("Play tracking error:", error);
-        });
-      }
-
-      // Track this play in database
-      if (userId && currentHook) {
-        supabase.from("hook_plays").insert({
-          user_id:  userId,
-          track_id: currentHook.id,
-          title:    currentHook.title,
-          artist:   currentHook.artist,
         });
       }
     }
@@ -191,6 +215,18 @@ export default function HomePage() {
     const isLiked = savedHooks.includes(currentHook.id);
     setHooks((prev) => prev.map((h) => h.id === currentHook.id ? { ...h, liked: !h.liked } : h));
     setSavedHooks((prev) => isLiked ? prev.filter((id) => id !== currentHook.id) : [...prev, currentHook.id]);
+    if (isLiked) {
+      setSavedHooksFull((prev) => prev.filter((h) => Number(h.track_id) !== currentHook.id));
+    } else {
+      const newRow = {
+        track_id: currentHook.id, title: currentHook.title,
+        artist: currentHook.artist, album: currentHook.album, album_art: currentHook.albumArt,
+        preview_url: currentHook.previewUrl, hook_start: currentHook.hookStart,
+        hook_end: currentHook.hookEnd, gradient: currentHook.gradient,
+        created_at: new Date().toISOString(),
+      };
+      setSavedHooksFull((prev) => [newRow, ...prev]);
+    }
     if (userId) {
       if (isLiked) {
         await supabase.from("saved_hooks").delete().eq("user_id", userId).eq("track_id", currentHook.id);
@@ -213,7 +249,8 @@ export default function HomePage() {
       await navigator.share({ title: "Hookify", text, url: window.location.href });
     } else {
       await navigator.clipboard.writeText(text);
-      alert("Link copied to clipboard!");
+      setShareToast("Link copied! 📤");
+      setTimeout(() => setShareToast(""), 2000);
     }
   };
 
@@ -227,6 +264,7 @@ export default function HomePage() {
       .single();
     if (!error && data) {
       setPlaylists((prev) => [...prev, data]);
+      setPlaylistCounts((prev) => ({ ...prev, [data.id]: 0 }));
       setNewPlaylistName("");
       setPlaylistMessage(`"${data.name}" created! ✅`);
       // Force close modal after 1.5 seconds
@@ -243,6 +281,18 @@ export default function HomePage() {
   // ── Add current hook to a playlist ────────────────────────────
   const addToPlaylist = async (playlistId: string, playlistName: string) => {
     if (!userId || !currentHook) return;
+    // Check for duplicate
+    const { data: existing } = await supabase
+      .from("playlist_tracks")
+      .select("id")
+      .eq("playlist_id", playlistId)
+      .eq("track_id", currentHook.id)
+      .maybeSingle();
+    if (existing) {
+      setPlaylistMessage(`Already in "${playlistName}"! 🎵`);
+      setTimeout(() => { setPlaylistMessage(""); setShowPlaylistModal(false); }, 1500);
+      return;
+    }
     const { error } = await supabase.from("playlist_tracks").insert({
       playlist_id: playlistId, user_id: userId, track_id: currentHook.id,
       title: currentHook.title, artist: currentHook.artist, album: currentHook.album,
@@ -251,6 +301,7 @@ export default function HomePage() {
       gradient: currentHook.gradient,
     });
     if (!error) {
+      setPlaylistCounts((prev) => ({ ...prev, [playlistId]: (prev[playlistId] ?? 0) + 1 }));
       setPlaylistMessage(`Added to "${playlistName}"! ✅`);
       setTimeout(() => {
         setPlaylistMessage("");
@@ -330,7 +381,8 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     onClick={() => addToPlaylist(playlist.id, playlist.name)}
                     className="w-full py-3 px-4 rounded-2xl bg-[#0a0e1a] border border-white/10 text-white text-left text-sm hover:border-[#90e0ef]/40 transition-all flex items-center gap-3">
                     <span className="text-lg">🎵</span>
-                    <span>{playlist.name}</span>
+                    <span className="flex-1">{playlist.name}</span>
+                    <span className="text-xs text-gray-500 ml-auto">{playlistCounts[playlist.id] ?? 0} songs</span>
                   </button>
                 ))
               )}
@@ -451,6 +503,11 @@ const openPlaylistDetail = (playlist: Playlist) => {
                   </button>
                 </div>
 
+                {/* Share toast */}
+                {shareToast && (
+                  <p className="text-center text-green-400 text-sm animate-pulse mb-2">{shareToast}</p>
+                )}
+
                 {/* Action buttons */}
                 <div className="flex justify-around items-center">
                   <button onClick={toggleLike} className="flex flex-col items-center gap-1 group">
@@ -495,7 +552,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
         {activeTab === "saved" && (
           <div className="w-full max-w-2xl">
             <h2 className="text-xl font-medium mb-6 text-center text-[#90e0ef]">your saved hooks 💾</h2>
-            {savedHooks.length === 0 ? (
+            {savedHooksFull.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-6xl mb-4">🐘</p>
                 <p className="text-gray-400 text-sm">no saved hooks yet!</p>
@@ -503,14 +560,39 @@ const openPlaylistDetail = (playlist: Playlist) => {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {hooks.filter((h) => savedHooks.includes(h.id)).map((hook) => (
-                  <div key={hook.id} className={`bg-gradient-to-r ${hook.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-4`}>
-                    <img src={hook.albumArt} alt={hook.album} className="w-14 h-14 rounded-full object-cover border border-[#90e0ef]/30" />
+                {savedHooksFull.map((hook) => (
+                  <div key={hook.id ?? hook.track_id}
+                    className={`bg-gradient-to-r ${hook.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-4`}>
+                    <img src={hook.album_art} alt={hook.album}
+                      className="w-14 h-14 rounded-full object-cover border border-[#90e0ef]/30 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{hook.title}</p>
                       <p className="text-sm text-gray-400 truncate">{hook.artist}</p>
+                      <span className="text-xs text-[#90e0ef]">{hook.hook_start}s–{hook.hook_end}s</span>
                     </div>
-                    <span className="text-sm text-[#90e0ef] bg-[#90e0ef]/10 px-3 py-1 rounded-full">0:30</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => {
+                          savedAudio?.pause();
+                          const a = new Audio(hook.preview_url);
+                          a.currentTime = hook.hook_start;
+                          a.ontimeupdate = () => { if (a.currentTime >= hook.hook_end) { a.pause(); a.currentTime = hook.hook_start; } };
+                          a.play();
+                          setSavedAudio(a);
+                        }}
+                        className="w-9 h-9 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 flex items-center justify-center text-[#90e0ef] hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all text-sm">
+                        ▶
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setSavedHooks((prev) => prev.filter((id) => id !== Number(hook.track_id)));
+                          setSavedHooksFull((prev) => prev.filter((h) => h.track_id !== hook.track_id));
+                          if (userId) await supabase.from("saved_hooks").delete().eq("user_id", userId).eq("track_id", hook.track_id);
+                        }}
+                        className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/30 transition-all text-sm">
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -623,7 +705,9 @@ const openPlaylistDetail = (playlist: Playlist) => {
                           <div className="w-12 h-12 rounded-xl bg-[#90e0ef]/20 border border-[#90e0ef]/30 flex items-center justify-center text-xl flex-shrink-0">🎵</div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate text-white">{playlist.name}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">tap to view songs</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {playlistCounts[playlist.id] ?? 0} {(playlistCounts[playlist.id] ?? 0) === 1 ? "hook" : "hooks"}
+                            </p>
                           </div>
                           <span className="text-gray-400 text-lg mr-2">›</span>
                         </button>
@@ -657,8 +741,8 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 <p className="text-xs text-gray-400">playlists</p>
               </div>
               <div>
-                <p className="text-2xl font-medium text-[#90e0ef]">{hooks.length}</p>
-                <p className="text-xs text-gray-400">hooks</p>
+                <p className="text-2xl font-medium text-[#90e0ef]">{totalPlays}</p>
+                <p className="text-xs text-gray-400">plays</p>
               </div>
             </div>
             <button
