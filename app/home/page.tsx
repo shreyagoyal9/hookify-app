@@ -32,6 +32,9 @@ export default function HomePage() {
   const [isLooping, setIsLooping] = useState(false); // Loop the hook
   const [newPlaylistName, setNewPlaylistName]     = useState("");
   const [playlistMessage, setPlaylistMessage]     = useState("");
+  const [openPlaylist, setOpenPlaylist]       = useState<Playlist | null>(null);
+  const [playlistTracks, setPlaylistTracks]   = useState<any[]>([]);
+  const [loadingTracks, setLoadingTracks]     = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -261,6 +264,20 @@ export default function HomePage() {
     await supabase.from("playlists").delete().eq("id", playlistId);
     setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
   };
+const openPlaylistDetail = (playlist: Playlist) => {
+  console.log("CLICKED:", playlist.name);
+  setOpenPlaylist(playlist);
+  setLoadingTracks(true);
+  supabase
+    .from("playlist_tracks")
+    .select("*")
+    .eq("playlist_id", playlist.id)
+    .order("created_at", { ascending: true })
+    .then(({ data }) => {
+      setPlaylistTracks(data ?? []);
+      setLoadingTracks(false);
+    });
+};
 
   // ── Loading screen ─────────────────────────────────────────────
   if (loading) {
@@ -311,7 +328,7 @@ export default function HomePage() {
                 playlists.map((playlist) => (
                   <button key={playlist.id}
                     onClick={() => addToPlaylist(playlist.id, playlist.name)}
-                    className="w-full py-3 px-4 rounded-2xl bg-[#0a0e1a] border border-white/10 text-left text-sm hover:border-[#90e0ef]/40 transition-all flex items-center gap-3">
+                    className="w-full py-3 px-4 rounded-2xl bg-[#0a0e1a] border border-white/10 text-white text-left text-sm hover:border-[#90e0ef]/40 transition-all flex items-center gap-3">
                     <span className="text-lg">🎵</span>
                     <span>{playlist.name}</span>
                   </button>
@@ -358,7 +375,7 @@ export default function HomePage() {
             </div>
 
             <AnimatePresence mode="wait">
-              <motion.div
+              {activeTab === "home" && <motion.div
                 key={currentHook.id}
                 initial={{ opacity: 0, x: direction === "left" ? 400 : -400 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -469,7 +486,7 @@ export default function HomePage() {
                     <span className="text-xs text-gray-500">playlist</span>
                   </button>
                 </div>
-              </motion.div>
+              </motion.div>}
             </AnimatePresence>
             <p className="text-center text-gray-600 text-xs mt-3">← drag to swipe hooks →</p>
           </div>
@@ -533,39 +550,97 @@ export default function HomePage() {
         {/* ══ PLAYLISTS TAB ═══════════════════════════════════════ */}
         {activeTab === "playlists" && (
           <div className="w-full max-w-2xl">
-            <h2 className="text-xl font-medium mb-6 text-center text-[#90e0ef]">
-              your playlists 🎵
-            </h2>
-            {playlists.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-6xl mb-4">🎵</p>
-                <p className="text-gray-400 text-sm">no playlists yet!</p>
-                <p className="text-gray-600 text-xs mt-1">tap ➕ on any hook to create one</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {playlists.map((playlist) => (
-                  <div key={playlist.id}
-                    className="flex items-center gap-4 bg-white/5 rounded-2xl px-4 py-4 border border-white/10 hover:border-[#90e0ef]/30 transition-all">
-                    <div className="w-12 h-12 rounded-xl bg-[#90e0ef]/20 border border-[#90e0ef]/30 flex items-center justify-center text-xl flex-shrink-0">
-                      🎵
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{playlist.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">your playlist</p>
-                    </div>
-                    <button
-                      onClick={() => deletePlaylist(playlist.id)}
-                      className="text-gray-600 hover:text-red-400 transition-colors text-lg">
-                      🗑️
-                    </button>
+            {/* ── Playlist detail view ── */}
+            {openPlaylist ? (
+              <>
+                <div className="flex items-center gap-3 mb-6">
+                  <button onClick={() => setOpenPlaylist(null)}
+                    className="text-gray-400 hover:text-white text-sm">← back</button>
+                  <h2 className="text-xl font-medium text-[#90e0ef]">{openPlaylist.name}</h2>
+                </div>
+                {loadingTracks ? (
+                  <p className="text-gray-400 text-sm text-center animate-pulse">loading...</p>
+                ) : playlistTracks.length === 0 ? (
+                  <div className="text-center py-20">
+                    <p className="text-6xl mb-4">🎵</p>
+                    <p className="text-gray-400 text-sm">no songs in this playlist yet!</p>
+                    <p className="text-gray-600 text-xs mt-1">tap ➕ on any hook to add songs</p>
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {playlistTracks.map((track) => (
+                      <div key={track.id}
+                        className={`bg-gradient-to-r ${track.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-4`}>
+                        <img src={track.album_art} alt={track.album}
+                          className="w-14 h-14 rounded-full object-cover border border-[#90e0ef]/30 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{track.title}</p>
+                          <p className="text-sm text-gray-400 truncate">{track.artist}</p>
+                          <span className="text-xs text-[#90e0ef]">
+                            {track.hook_start}s–{track.hook_end}s
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            audioRef.current?.pause();
+                            const newAudio = new Audio(track.preview_url);
+                            newAudio.currentTime = track.hook_start;
+                            newAudio.ontimeupdate = () => {
+                              if (newAudio.currentTime >= track.hook_end) {
+                                newAudio.pause();
+                                newAudio.currentTime = track.hook_start;
+                              }
+                            };
+                            newAudio.play();
+                            audioRef.current = newAudio;
+                            setIsPlaying(true);
+                            setIsVibing(true);
+                          }}
+                          className="w-10 h-10 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 flex items-center justify-center text-[#90e0ef] hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all flex-shrink-0">
+                          ▶
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ── Playlist list view ── */
+              <>
+                <h2 className="text-xl font-medium mb-6 text-center text-[#90e0ef]">your playlists 🎵</h2>
+                {playlists.length === 0 ? (
+                  <div className="text-center py-20">
+                    <p className="text-6xl mb-4">🎵</p>
+                    <p className="text-gray-400 text-sm">no playlists yet!</p>
+                    <p className="text-gray-600 text-xs mt-1">tap ➕ on any hook to create one</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {playlists.map((playlist) => (
+                      <div key={playlist.id} className="flex items-center gap-4 bg-white/5 rounded-2xl px-4 py-4 border border-white/10 hover:border-[#90e0ef]/30 transition-all">
+                        <button
+                          onClick={() => openPlaylistDetail(playlist)}
+                          className="flex items-center gap-4 flex-1 min-w-0 text-left">
+                          <div className="w-12 h-12 rounded-xl bg-[#90e0ef]/20 border border-[#90e0ef]/30 flex items-center justify-center text-xl flex-shrink-0">🎵</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate text-white">{playlist.name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">tap to view songs</p>
+                          </div>
+                          <span className="text-gray-400 text-lg mr-2">›</span>
+                        </button>
+                        <button
+                          onClick={() => deletePlaylist(playlist.id)}
+                          className="text-gray-600 hover:text-red-400 transition-colors text-lg flex-shrink-0">
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
-
         {/* ══ PROFILE TAB ═════════════════════════════════════════ */}
         {activeTab === "profile" && (
           <div className="w-full max-w-2xl text-center">
@@ -608,7 +683,11 @@ export default function HomePage() {
           { id: "profile",   icon: "👤", label: "profile",   href: null        },
         ].map((tab) => (
           <button key={tab.id}
-            onClick={() => tab.href ? window.location.href = tab.href : setActiveTab(tab.id)}
+            onClick={() => {
+              if (tab.href) { window.location.href = tab.href; return; }
+              if (tab.id === "playlists") setOpenPlaylist(null);
+              setActiveTab(tab.id);
+            }}
             className={`flex flex-col items-center gap-1 transition-all duration-200 ${
               activeTab === tab.id ? "text-[#90e0ef] scale-110" : "text-gray-500 hover:text-gray-300"
             }`}>
