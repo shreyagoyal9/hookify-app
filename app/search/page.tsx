@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Track } from "@/lib/itunes";
@@ -27,6 +27,7 @@ export default function SearchPage() {
   const [isPlaying, setIsPlaying]                 = useState(false);
   const [isLooping, setIsLooping]                 = useState(false);
   const [audio, setAudio]                         = useState<HTMLAudioElement | null>(null);
+  const isLoopingRef = useRef(false);
   const [userId, setUserId]                       = useState<string | null>(null);
   const [playlists, setPlaylists]                 = useState<Playlist[]>([]);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
@@ -34,8 +35,10 @@ export default function SearchPage() {
   const [playlistMessage, setPlaylistMessage]     = useState("");
   const [savedTracks, setSavedTracks]             = useState<Set<number>>(new Set());
   const [mounted, setMounted]                     = useState(false);
+  const isLoopingRef                              = useRef(false);
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
 
   useEffect(() => {
     async function loadUser() {
@@ -110,7 +113,7 @@ export default function SearchPage() {
     newAudio.currentTime = track.hookStart;
     newAudio.ontimeupdate = () => {
       if (newAudio.currentTime >= track.hookEnd) {
-        if (isLooping) { newAudio.currentTime = track.hookStart; }
+        if (isLoopingRef.current) { newAudio.currentTime = track.hookStart; }
         else { newAudio.pause(); setIsPlaying(false); }
       }
     };
@@ -185,7 +188,13 @@ export default function SearchPage() {
   };
 
   const addToPlaylist = async (playlistId: string, playlistName: string) => {
-    if (!userId || !selectedTrack) return;
+    let activeUserId = userId;
+    if (!activeUserId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      activeUserId = session?.user?.id ?? null;
+      if (activeUserId) setUserId(activeUserId);
+    }
+    if (!activeUserId || !selectedTrack) return;
     // Check for duplicate
     const { data: existing } = await supabase
       .from("playlist_tracks")
@@ -199,7 +208,7 @@ export default function SearchPage() {
       return;
     }
     const { error } = await supabase.from("playlist_tracks").insert({
-      playlist_id: playlistId, user_id: userId, track_id: selectedTrack.id,
+      playlist_id: playlistId, user_id: activeUserId, track_id: selectedTrack.id,
       title: selectedTrack.title, artist: selectedTrack.artist, album: selectedTrack.album,
       album_art: selectedTrack.albumArt, preview_url: selectedTrack.previewUrl,
       hook_start: selectedTrack.hookStart, hook_end: selectedTrack.hookEnd,
@@ -319,7 +328,7 @@ export default function SearchPage() {
                     {isPlaying ? "⏸" : "▶"}
                   </button>
                 </div>
-                <button onClick={() => setIsLooping((p) => !p)}
+                <button onClick={() => setIsLooping((p) => { isLoopingRef.current = !p; return !p; })}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all mb-6 ${
                     isLooping ? "bg-[#90e0ef] text-[#0a0e1a] font-bold" : "bg-white/10 text-gray-400 hover:bg-white/20"
                   }`}>

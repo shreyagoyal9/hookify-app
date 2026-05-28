@@ -42,6 +42,12 @@ export default function HomePage() {
   const [playlistCounts, setPlaylistCounts]   = useState<Record<string, number>>({});
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isLoopingRef = useRef(false);
+  const playlistTracksRef = useRef<any[]>([]);
+  const startPlaylistTrack = useRef<(index: number) => void>(() => {});
+  const [isPlaylistMode, setIsPlaylistMode]           = useState(false);
+  const [playlistModeIndex, setPlaylistModeIndex]     = useState(0);
+  const [playingPlaylistTrackId, setPlayingPlaylistTrackId] = useState<string | null>(null);
 
   // ── Fetch songs from iTunes ────────────────────────────────────
   useEffect(() => {
@@ -132,6 +138,40 @@ export default function HomePage() {
     getUser();
   }, []);
 
+  // ── Sync loop + playlist refs ──────────────────────────────────
+  useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
+  useEffect(() => { playlistTracksRef.current = playlistTracks; }, [playlistTracks]);
+
+  // ── startPlaylistTrack (always latest via ref) ─────────────────
+  startPlaylistTrack.current = (index: number) => {
+    const tracks = playlistTracksRef.current;
+    const track = tracks[index];
+    if (!track) return;
+    audioRef.current?.pause();
+    const a = new Audio(track.preview_url);
+    a.currentTime = track.hook_start;
+    a.ontimeupdate = () => {
+      if (a.currentTime >= track.hook_end) {
+        a.pause();
+        setPlayingPlaylistTrackId(null);
+        setIsVibing(false);
+        const next = index + 1;
+        if (next < tracks.length) {
+          setPlaylistModeIndex(next);
+          setTimeout(() => startPlaylistTrack.current(next), 700);
+        } else {
+          setIsPlaylistMode(false);
+          setPlaylistModeIndex(0);
+        }
+      }
+    };
+    a.play().catch(() => {});
+    audioRef.current = a;
+    setPlayingPlaylistTrackId(track.id);
+    setPlaylistModeIndex(index);
+    setIsVibing(true);
+  };
+
   // ── Clean up audio ─────────────────────────────────────────────-
   useEffect(() => {
     return () => { audioRef.current?.pause(); };
@@ -153,8 +193,7 @@ export default function HomePage() {
         audioRef.current.currentTime = currentHook.hookStart;
         audioRef.current.ontimeupdate = () => {
           if (audioRef.current && audioRef.current.currentTime >= currentHook.hookEnd) {
-            if (isLooping) {
-              // Loop back to hook start
+            if (isLoopingRef.current) {
               audioRef.current.currentTime = currentHook.hookStart;
             } else {
               audioRef.current.pause();
@@ -345,6 +384,90 @@ const openPlaylistDetail = (playlist: Playlist) => {
 
   return (
     <main className="min-h-screen bg-[#0a0e1a] text-white flex flex-col">
+
+      {/* ── PLAYLIST PLAY MODE ──────────────────────────────────── */}
+      {isPlaylistMode && playlistTracks.length > 0 && (() => {
+        const pmTrack = playlistTracks[playlistModeIndex];
+        const pmPlaying = playingPlaylistTrackId === pmTrack?.id;
+        return (
+          <div className="fixed inset-0 z-[200] bg-[#0a0e1a] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4">
+              <button onClick={() => {
+                audioRef.current?.pause();
+                setIsPlaylistMode(false);
+                setPlayingPlaylistTrackId(null);
+                setIsVibing(false);
+              }} className="text-gray-400 hover:text-white text-sm">← exit</button>
+              <span className="text-xs text-gray-500">{playlistModeIndex + 1} / {playlistTracks.length}</span>
+            </div>
+            <div className={`flex-1 flex flex-col items-center justify-center px-6 bg-gradient-to-br ${pmTrack?.gradient}`}>
+              {/* Vinyl */}
+              <div className="flex justify-center mb-6">
+                <div className={`w-72 h-72 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${pmPlaying ? "animate-spin" : ""}`}
+                  style={{ animationDuration: "4s" }}>
+                  <div className="w-64 h-64 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
+                    style={{ background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)" }}>
+                    <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
+                      <img src={pmTrack?.album_art} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Info */}
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-medium mb-1">{pmTrack?.title}</h2>
+                <p className="text-[#90e0ef] text-base mb-0.5">{pmTrack?.artist}</p>
+                <p className="text-gray-500 text-sm">{pmTrack?.album}</p>
+                <p className="text-xs text-[#90e0ef]/60 mt-2">hook: {pmTrack?.hook_start}s – {pmTrack?.hook_end}s</p>
+              </div>
+              {/* Play button */}
+              <button
+                onClick={() => {
+                  if (pmPlaying) {
+                    audioRef.current?.pause();
+                    setPlayingPlaylistTrackId(null);
+                    setIsVibing(false);
+                  } else {
+                    startPlaylistTrack.current(playlistModeIndex);
+                  }
+                }}
+                className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all duration-300 mb-6 ${
+                  pmPlaying
+                    ? "bg-[#90e0ef] text-[#0a0e1a] scale-110 shadow-[0_0_30px_rgba(144,224,239,0.6)]"
+                    : "bg-white/10 text-white hover:bg-[#90e0ef]/20 border border-white/20"
+                }`}>
+                {pmPlaying ? "⏸" : "▶"}
+              </button>
+              {/* Prev / Next */}
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    audioRef.current?.pause();
+                    setPlayingPlaylistTrackId(null);
+                    setIsVibing(false);
+                    setPlaylistModeIndex((p) => Math.max(0, p - 1));
+                  }}
+                  disabled={playlistModeIndex === 0}
+                  className="px-5 py-2 rounded-full bg-white/10 text-gray-400 text-sm disabled:opacity-30 hover:bg-white/20 transition-all">
+                  ← prev
+                </button>
+                <button
+                  onClick={() => {
+                    audioRef.current?.pause();
+                    setPlayingPlaylistTrackId(null);
+                    setIsVibing(false);
+                    setPlaylistModeIndex((p) => Math.min(playlistTracks.length - 1, p + 1));
+                  }}
+                  disabled={playlistModeIndex === playlistTracks.length - 1}
+                  className="px-5 py-2 rounded-full bg-white/10 text-gray-400 text-sm disabled:opacity-30 hover:bg-white/20 transition-all">
+                  next →
+                </button>
+              </div>
+              <p className="text-gray-600 text-xs mt-6">auto-plays next hook when done 🎵</p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── PLAYLIST MODAL ──────────────────────────────────────── */}
       {showPlaylistModal && (
@@ -637,7 +760,18 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 <div className="flex items-center gap-3 mb-6">
                   <button onClick={() => setOpenPlaylist(null)}
                     className="text-gray-400 hover:text-white text-sm">← back</button>
-                  <h2 className="text-xl font-medium text-[#90e0ef]">{openPlaylist.name}</h2>
+                  <h2 className="text-xl font-medium text-[#90e0ef] flex-1">{openPlaylist.name}</h2>
+                  {playlistTracks.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setPlaylistModeIndex(0);
+                        setIsPlaylistMode(true);
+                        setTimeout(() => startPlaylistTrack.current(0), 300);
+                      }}
+                      className="px-3 py-1.5 rounded-full bg-[#90e0ef] text-[#0a0e1a] text-xs font-bold hover:opacity-90 flex-shrink-0">
+                      ▶ play all
+                    </button>
+                  )}
                 </div>
                 {loadingTracks ? (
                   <p className="text-gray-400 text-sm text-center animate-pulse">loading...</p>
@@ -663,22 +797,29 @@ const openPlaylistDetail = (playlist: Playlist) => {
                         </div>
                         <button
                           onClick={() => {
+                            if (playingPlaylistTrackId === track.id) {
+                              audioRef.current?.pause();
+                              setPlayingPlaylistTrackId(null);
+                              setIsVibing(false);
+                              return;
+                            }
                             audioRef.current?.pause();
                             const newAudio = new Audio(track.preview_url);
                             newAudio.currentTime = track.hook_start;
                             newAudio.ontimeupdate = () => {
                               if (newAudio.currentTime >= track.hook_end) {
                                 newAudio.pause();
-                                newAudio.currentTime = track.hook_start;
+                                setPlayingPlaylistTrackId(null);
+                                setIsVibing(false);
                               }
                             };
-                            newAudio.play();
+                            newAudio.play().catch(() => {});
                             audioRef.current = newAudio;
-                            setIsPlaying(true);
+                            setPlayingPlaylistTrackId(track.id);
                             setIsVibing(true);
                           }}
                           className="w-10 h-10 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 flex items-center justify-center text-[#90e0ef] hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all flex-shrink-0">
-                          ▶
+                          {playingPlaylistTrackId === track.id ? "⏸" : "▶"}
                         </button>
                       </div>
                     ))}
