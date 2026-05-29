@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchAllHooks, type Track } from "@/lib/itunes";
+import { fetchAllHooks, searchTrackFast, detectAndCache, type Track } from "@/lib/itunes";
 import { supabase } from "@/lib/supabase";
 
 // ── Type: Playlist ───────────────────────────────────────────────
@@ -66,33 +66,66 @@ export default function HomePage() {
     async function fetchHooks() {
       setLoading(true);
       try {
-        // Fetch real iTunes top charts
+        // Step 1: fetch chart list (fast, just metadata)
         const trendingResponse = await fetch("/api/trending");
         const trendingData     = await trendingResponse.json();
 
         if (trendingData.trending?.length > 0) {
           setTrendingList(trendingData.trending.slice(0, 25));
-          const { searchTrack } = await import("@/lib/itunes");
+
+          // Step 2: fetch iTunes data for each song WITHOUT waiting for AI
+          const songs = trendingData.trending.slice(0, 20);
           const results = await Promise.all(
-            trendingData.trending
-              .slice(0, 20)
-              .map((song: any, i: number) => searchTrack(song.searchQuery, i))
+            songs.map((song: any, i: number) => searchTrackFast(song.searchQuery, i))
           );
           const validHooks = results.filter((t): t is Track => t !== null);
+
           if (validHooks.length >= 3) {
+            // Step 3: show feed immediately with fallback/cached timestamps
             setHooks(validHooks.slice(0, 12));
             setLoading(false);
+
+            // Step 4: run AI detection in background, update timestamps silently
+            validHooks.slice(0, 12).forEach((track) => {
+              detectAndCache(track.previewUrl).then((ai) => {
+                if (ai) {
+                  setHooks((prev) =>
+                    prev.map((h) =>
+                      h.id === track.id
+                        ? { ...h, hookStart: ai.hookStart, hookEnd: ai.hookEnd }
+                        : h
+                    )
+                  );
+                }
+              });
+            });
             return;
           }
         }
       } catch {
-        // iTunes RSS failed — fall back to manual list
+        // fall through to manual list
       }
 
-      // Fallback to manual list
-      const validHooks = await fetchAllHooks();
+      // Fallback: manual list, also show fast then detect in background
+      const validHooks = await Promise.all(
+        (await import("@/lib/itunes")).TRENDING_SONGS.map((q, i) => searchTrackFast(q, i))
+      ).then((r) => r.filter((t): t is Track => t !== null));
       setHooks(validHooks);
       setLoading(false);
+
+      validHooks.forEach((track) => {
+        detectAndCache(track.previewUrl).then((ai) => {
+          if (ai) {
+            setHooks((prev) =>
+              prev.map((h) =>
+                h.id === track.id
+                  ? { ...h, hookStart: ai.hookStart, hookEnd: ai.hookEnd }
+                  : h
+              )
+            );
+          }
+        });
+      });
     }
     fetchHooks();
   }, []);

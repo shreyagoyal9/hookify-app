@@ -70,32 +70,48 @@ async function detectHookWithAI(
   }
 }
 
-// ── Search iTunes for one song ───────────────────────────────────
-export async function searchTrack(
+// ── Hook timestamp cache (localStorage, keyed by previewUrl) ─────
+const CACHE_KEY = "hookify_hook_cache";
+
+function getCachedTimestamp(previewUrl: string): { hookStart: number; hookEnd: number } | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw);
+    return cache[previewUrl] ?? null;
+  } catch { return null; }
+}
+
+function setCachedTimestamp(previewUrl: string, hookStart: number, hookEnd: number) {
+  try {
+    const raw   = localStorage.getItem(CACHE_KEY);
+    const cache = raw ? JSON.parse(raw) : {};
+    cache[previewUrl] = { hookStart, hookEnd };
+    // Keep cache under 100 entries
+    const keys = Object.keys(cache);
+    if (keys.length > 100) delete cache[keys[0]];
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch { /* ignore */ }
+}
+
+// ── Search iTunes for one song (fast — no AI wait) ───────────────
+// Returns immediately with fallback/cached timestamps.
+// Caller should fire detectHookWithAI separately in background.
+export async function searchTrackFast(
   query: string,
   index: number
 ): Promise<Track | null> {
   try {
-    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(
-      query
-    )}&media=music&limit=1`;
-
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&limit=1`;
     const response = await fetch(url);
     const data     = await response.json();
     const track    = data.results?.[0];
-
     if (!track || !track.previewUrl) return null;
 
-    // Start with manual fallback timestamps
-    let hookStart = MANUAL_TIMESTAMPS[query]?.hookStart ?? 5;
-    let hookEnd   = MANUAL_TIMESTAMPS[query]?.hookEnd   ?? 20;
-
-    // Try AI detection — replaces manual if successful!
-    const aiResult = await detectHookWithAI(track.previewUrl);
-    if (aiResult) {
-      hookStart = aiResult.hookStart;
-      hookEnd   = aiResult.hookEnd;
-    }
+    // Use cached timestamps if available, else fallback
+    const cached  = getCachedTimestamp(track.previewUrl);
+    const hookStart = cached?.hookStart ?? MANUAL_TIMESTAMPS[query]?.hookStart ?? 5;
+    const hookEnd   = cached?.hookEnd   ?? MANUAL_TIMESTAMPS[query]?.hookEnd   ?? 20;
 
     return {
       id:         track.trackId,
@@ -112,6 +128,29 @@ export async function searchTrack(
   } catch {
     return null;
   }
+}
+
+// ── Run AI detection in background and update cache ───────────────
+export async function detectAndCache(previewUrl: string): Promise<{ hookStart: number; hookEnd: number } | null> {
+  const cached = getCachedTimestamp(previewUrl);
+  if (cached) return cached; // Already have it
+  const result = await detectHookWithAI(previewUrl);
+  if (result) setCachedTimestamp(previewUrl, result.hookStart, result.hookEnd);
+  return result;
+}
+
+// ── Search iTunes for one song (with AI — kept for compatibility) ─
+export async function searchTrack(
+  query: string,
+  index: number
+): Promise<Track | null> {
+  const track = await searchTrackFast(query, index);
+  if (!track) return null;
+  const aiResult = await detectAndCache(track.previewUrl);
+  if (aiResult) {
+    return { ...track, hookStart: aiResult.hookStart, hookEnd: aiResult.hookEnd };
+  }
+  return track;
 }
 
 // ── Trending songs list ───────────────────────────────────────────
