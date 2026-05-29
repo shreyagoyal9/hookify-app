@@ -54,6 +54,8 @@ export default function HomePage() {
   const [addSearchQuery, setAddSearchQuery]   = useState("");
   const [addSearchResults, setAddSearchResults] = useState<any[]>([]);
   const [addSearchLoading, setAddSearchLoading] = useState(false);
+  const [previewAudio, setPreviewAudio]         = useState<HTMLAudioElement | null>(null);
+  const [previewingTrackId, setPreviewingTrackId] = useState<number | null>(null);
 
   // ── Fetch songs from iTunes ────────────────────────────────────
   useEffect(() => {
@@ -946,11 +948,34 @@ const openPlaylistDetail = (playlist: Playlist) => {
                               <p className="text-sm font-medium truncate">{track.title}</p>
                               <p className="text-xs text-gray-400 truncate">{track.artist}</p>
                             </div>
-                            <button
-                              onClick={() => addSearchTrackToPlaylist(track)}
-                              className="px-3 py-1 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 text-[#90e0ef] text-xs font-bold hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all flex-shrink-0">
-                              + add
-                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {/* Play/pause preview */}
+                              <button
+                                onClick={() => {
+                                  if (previewingTrackId === track.trackId && previewAudio && !previewAudio.paused) {
+                                    previewAudio.pause();
+                                    setPreviewingTrackId(null);
+                                    return;
+                                  }
+                                  previewAudio?.pause();
+                                  const a = new Audio(track.previewUrl);
+                                  a.currentTime = track.hookStart;
+                                  a.ontimeupdate = () => { if (a.currentTime >= track.hookEnd) { a.pause(); setPreviewingTrackId(null); } };
+                                  a.onended = () => setPreviewingTrackId(null);
+                                  a.play().catch(() => {});
+                                  setPreviewAudio(a);
+                                  setPreviewingTrackId(track.trackId);
+                                }}
+                                className="w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all text-xs">
+                                {previewingTrackId === track.trackId && previewAudio && !previewAudio.paused ? "⏸" : "▶"}
+                              </button>
+                              {/* Add button */}
+                              <button
+                                onClick={() => addSearchTrackToPlaylist(track)}
+                                className="px-3 py-1 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 text-[#90e0ef] text-xs font-bold hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all">
+                                + add
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1008,8 +1033,8 @@ const openPlaylistDetail = (playlist: Playlist) => {
                           </button>
                           <button
                             onClick={() => removeFromPlaylist(track.id)}
-                            className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm">
-                            ✕
+                            className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center hover:bg-red-500 transition-all text-sm">
+                            🗑️
                           </button>
                         </div>
                       </div>
