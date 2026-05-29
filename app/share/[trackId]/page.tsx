@@ -4,11 +4,11 @@
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 
-export default function SharePage({ params }: { params: { trackId: string } }) {
+function ShareContent({ params }: { params: { trackId: string } }) {
   const searchParams  = useSearchParams();
   const title         = searchParams.get("title")  ?? "Unknown Title";
   const artist        = searchParams.get("artist") ?? "Unknown Artist";
@@ -120,5 +120,17 @@ export default function SharePage({ params }: { params: { trackId: string } }) {
         just the hook. 15 seconds. the best part.
       </p>
     </main>
+  );
+}
+
+export default function SharePage({ params }: { params: { trackId: string } }) {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#0a0e1a] text-white flex items-center justify-center">
+        <p className="text-[#90e0ef] animate-pulse">loading hook...</p>
+      </main>
+    }>
+      <ShareContent params={params} />
+    </Suspense>
   );
 }
