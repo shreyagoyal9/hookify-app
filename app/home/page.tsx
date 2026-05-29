@@ -48,6 +48,7 @@ export default function HomePage() {
   const [isPlaylistMode, setIsPlaylistMode]           = useState(false);
   const [playlistModeIndex, setPlaylistModeIndex]     = useState(0);
   const [playingPlaylistTrackId, setPlayingPlaylistTrackId] = useState<string | null>(null);
+  const [playlistMenuId, setPlaylistMenuId] = useState<string | null>(null);
 
   // ── Fetch songs from iTunes ────────────────────────────────────
   useEffect(() => {
@@ -354,6 +355,27 @@ export default function HomePage() {
     await supabase.from("playlists").delete().eq("id", playlistId);
     setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
   };
+const startPlaylistPlay = (playlist: Playlist) => {
+  setOpenPlaylist(playlist);
+  setLoadingTracks(true);
+  setPlaylistMenuId(null);
+  supabase
+    .from("playlist_tracks")
+    .select("*")
+    .eq("playlist_id", playlist.id)
+    .order("created_at", { ascending: true })
+    .then(({ data }) => {
+      playlistTracksRef.current = data ?? [];
+      setPlaylistTracks(data ?? []);
+      setLoadingTracks(false);
+      if (data && data.length > 0) {
+        setIsPlaylistMode(true);
+        setPlaylistModeIndex(0);
+        setTimeout(() => startPlaylistTrack.current(0), 300);
+      }
+    });
+};
+
 const openPlaylistDetail = (playlist: Playlist) => {
   console.log("CLICKED:", playlist.name);
   setOpenPlaylist(playlist);
@@ -502,7 +524,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 playlists.map((playlist) => (
                   <button key={playlist.id}
                     onClick={() => addToPlaylist(playlist.id, playlist.name)}
-                    className="w-full py-3 px-4 rounded-2xl bg-[#0a0e1a] border border-white/10 text-white text-left text-sm hover:border-[#90e0ef]/40 transition-all flex items-center gap-3">
+                    className="w-full py-3 px-4 rounded-2xl bg-white/5 border border-[#90e0ef]/20 text-white text-left text-sm hover:bg-white/10 hover:border-[#90e0ef]/50 transition-all flex items-center gap-3">
                     <span className="text-lg">🎵</span>
                     <span className="flex-1">{playlist.name}</span>
                     <span className="text-xs text-gray-500 ml-auto">{playlistCounts[playlist.id] ?? 0} songs</span>
@@ -649,7 +671,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
 
                   {/* Loop button */}
                   <button
-                    onClick={() => setIsLooping((p) => !p)}
+                    onClick={() => setIsLooping((p) => { isLoopingRef.current = !p; return !p; })}
                     className="flex flex-col items-center gap-1 group"
                   >
                     <span className={`text-3xl transition-transform duration-200 group-hover:scale-125 ${
@@ -839,24 +861,45 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 ) : (
                   <div className="flex flex-col gap-3">
                     {playlists.map((playlist) => (
-                      <div key={playlist.id} className="flex items-center gap-4 bg-white/5 rounded-2xl px-4 py-4 border border-white/10 hover:border-[#90e0ef]/30 transition-all">
-                        <button
-                          onClick={() => openPlaylistDetail(playlist)}
-                          className="flex items-center gap-4 flex-1 min-w-0 text-left">
-                          <div className="w-12 h-12 rounded-xl bg-[#90e0ef]/20 border border-[#90e0ef]/30 flex items-center justify-center text-xl flex-shrink-0">🎵</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate text-white">{playlist.name}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {playlistCounts[playlist.id] ?? 0} {(playlistCounts[playlist.id] ?? 0) === 1 ? "hook" : "hooks"}
-                            </p>
+                      <div key={playlist.id} className="relative">
+                        <div className="flex items-center gap-4 bg-white/5 rounded-2xl px-4 py-4 border border-white/10 hover:border-[#90e0ef]/30 transition-all">
+                          <button
+                            onClick={() => openPlaylistDetail(playlist)}
+                            className="flex items-center gap-4 flex-1 min-w-0 text-left">
+                            <div className="w-12 h-12 rounded-xl bg-[#90e0ef]/20 border border-[#90e0ef]/30 flex items-center justify-center text-xl flex-shrink-0">🎵</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate text-white">{playlist.name}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {playlistCounts[playlist.id] ?? 0} {(playlistCounts[playlist.id] ?? 0) === 1 ? "hook" : "hooks"}
+                              </p>
+                            </div>
+                            <span className="text-gray-400 text-lg mr-2">›</span>
+                          </button>
+                          <button
+                            onClick={() => setPlaylistMenuId(playlistMenuId === playlist.id ? null : playlist.id)}
+                            className="text-gray-400 hover:text-white transition-colors text-xl px-1 flex-shrink-0">
+                            ⋯
+                          </button>
+                        </div>
+                        {playlistMenuId === playlist.id && (
+                          <div className="absolute right-0 top-full mt-1 bg-[#0e2a3b] border border-[#90e0ef]/20 rounded-2xl overflow-hidden z-10 shadow-xl min-w-[170px]">
+                            <button
+                              onClick={() => { openPlaylistDetail(playlist); setPlaylistMenuId(null); }}
+                              className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-all">
+                              📂 open playlist
+                            </button>
+                            <button
+                              onClick={() => { startPlaylistPlay(playlist); setActiveTab("playlists"); }}
+                              className="w-full px-4 py-3 text-left text-sm text-[#90e0ef] hover:bg-white/10 transition-all border-t border-white/10">
+                              ▶ play playlist
+                            </button>
+                            <button
+                              onClick={() => { deletePlaylist(playlist.id); setPlaylistMenuId(null); }}
+                              className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 transition-all border-t border-white/10">
+                              🗑️ delete
+                            </button>
                           </div>
-                          <span className="text-gray-400 text-lg mr-2">›</span>
-                        </button>
-                        <button
-                          onClick={() => deletePlaylist(playlist.id)}
-                          className="text-gray-600 hover:text-red-400 transition-colors text-lg flex-shrink-0">
-                          🗑️
-                        </button>
+                        )}
                       </div>
                     ))}
                   </div>

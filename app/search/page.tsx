@@ -35,7 +35,6 @@ export default function SearchPage() {
   const [playlistMessage, setPlaylistMessage]     = useState("");
   const [savedTracks, setSavedTracks]             = useState<Set<number>>(new Set());
   const [mounted, setMounted]                     = useState(false);
-  const isLoopingRef                              = useRef(false);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
@@ -244,7 +243,7 @@ export default function SearchPage() {
           ) : (
             playlists.map((p) => (
               <button key={p.id} onClick={() => addToPlaylist(p.id, p.name)}
-                className="w-full py-3 px-4 rounded-2xl bg-[#0a0e1a] border border-white/10 text-left text-sm hover:border-[#90e0ef]/40 flex items-center gap-3">
+                className="w-full py-3 px-4 rounded-2xl bg-white/5 border border-[#90e0ef]/20 text-white text-left text-sm hover:bg-white/10 hover:border-[#90e0ef]/50 transition-all flex items-center gap-3">
                 <span>🎵</span><span>{p.name}</span>
               </button>
             ))
@@ -274,6 +273,7 @@ export default function SearchPage() {
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.1}
               dragMomentum={false}
+              style={{ pointerEvents: showPlaylistModal ? "none" : undefined }}
               onDragEnd={(_, info) => {
                 if (showPlaylistModal) return;
                 const currentIdx = results.findIndex((t) => t.id === selectedTrack?.id);
