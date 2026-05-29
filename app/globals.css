@@ -5,13 +5,17 @@
 @import "tailwindcss";
 
 /* Hide scrollbars but keep scrolling working */
-/* Used in horizontal hook card rows */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Allow single-finger drag on swipeable cards without browser scroll interference */
+.swipe-card {
+  touch-action: none;
 }
 
 /* Sliding music note animation for the loading bar */

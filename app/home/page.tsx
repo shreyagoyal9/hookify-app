@@ -496,7 +496,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0e1a] text-white flex flex-col">
+    <main className="h-dvh bg-[#0a0e1a] text-white flex flex-col overflow-hidden">
 
       {/* ── PLAYLIST PLAY MODE ──────────────────────────────────── */}
       {isPlaylistMode && playlistTracks.length > 0 && (() => {
@@ -656,7 +656,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
       </nav>
 
       {/* ── MAIN CONTENT ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-start px-2 pt-2 pb-4">
+      <div className="flex-1 flex flex-col items-center justify-start px-2 pt-2 pb-4 overflow-y-auto">
 
         {/* ══ HOME TAB ════════════════════════════════════════════ */}
         {activeTab === "home" && currentHook && (

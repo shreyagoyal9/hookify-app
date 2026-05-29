@@ -9,7 +9,13 @@ export const metadata: Metadata = {
   title: "Hookify — just the hook",
   description: "15 seconds. the hook. skip everything else.",
   icons: {
-    icon: "/Elephant_Beats.jpeg", // Use elephant as browser tab icon
+    icon: "/Elephant_Beats.jpeg",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
   },
 };
 
@@ -20,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0a0e1a] antialiased">
+      <body className="bg-[#0a0e1a] antialiased overflow-hidden h-dvh">
         {children}
       </body>
     </html>

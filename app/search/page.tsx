@@ -286,7 +286,7 @@ export default function SearchPage() {
     <>
       {mounted && showPlaylistModal && createPortal(playlistModal, document.body)}
 
-      <main className="min-h-screen bg-[#0a0e1a] text-white flex flex-col">
+      <main className="h-dvh bg-[#0a0e1a] text-white flex flex-col overflow-hidden">
         <AnimatePresence>
           {selectedTrack && (
             <motion.div
@@ -296,20 +296,20 @@ export default function SearchPage() {
               transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
               drag={showPlaylistModal ? false : "y"}
               dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.1}
+              dragElastic={0.3}
               dragMomentum={false}
               style={{ pointerEvents: showPlaylistModal ? "none" : undefined }}
               onDragEnd={(_, info) => {
                 if (showPlaylistModal) return;
                 const currentIdx = results.findIndex((t) => t.id === selectedTrack?.id);
-                if (info.offset.y < -80 || info.velocity.y < -300) {
+                if (info.offset.y < -50 || info.velocity.y < -200) {
                   if (currentIdx < results.length - 1) { audio?.pause(); setIsPlaying(false); setSelectedTrack(results[currentIdx + 1]); }
-                } else if (info.offset.y > 80 || info.velocity.y > 300) {
+                } else if (info.offset.y > 50 || info.velocity.y > 200) {
                   if (currentIdx > 0) { audio?.pause(); setIsPlaying(false); setSelectedTrack(results[currentIdx - 1]); }
                   else { closeCard(); }
                 }
               }}
-              className="fixed inset-0 z-50 bg-[#0a0e1a] flex flex-col"
+              className="fixed inset-0 z-50 bg-[#0a0e1a] flex flex-col swipe-card"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
