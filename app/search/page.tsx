@@ -262,7 +262,7 @@ export default function SearchPage() {
             create
           </button>
         </div>
-        <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+        <div className="flex flex-col gap-2 max-h-48 scroll-touch">
           {playlists.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-4">no playlists yet — create one above!</p>
           ) : (
@@ -326,7 +326,7 @@ export default function SearchPage() {
               </div>
 
               {/* Card body */}
-              <div className={`flex-1 flex flex-col items-center justify-center px-6 py-4 bg-gradient-to-b ${selectedTrack.gradient} overflow-y-auto`}>
+              <div className={`flex-1 flex flex-col items-center justify-center px-6 py-4 bg-gradient-to-b ${selectedTrack.gradient} scroll-touch`}>
                 {/* Vinyl */}
                 <div className="flex justify-center mb-5">
                   <div className="relative">

@@ -18,6 +18,12 @@
   touch-action: none;
 }
 
+/* Smooth 1-finger scrolling on iOS Safari */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
 /* Sliding music note animation for the loading bar */
 @keyframes slide {
   0%   { left: -40px; }

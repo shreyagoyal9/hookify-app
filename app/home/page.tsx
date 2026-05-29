@@ -613,7 +613,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 create
               </button>
             </div>
-            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+            <div className="flex flex-col gap-2 max-h-48 scroll-touch">
               {playlists.length === 0 ? (
                 <p className="text-gray-500 text-sm text-center py-4">
                   no playlists yet — create one above!
@@ -656,7 +656,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
       </nav>
 
       {/* ── MAIN CONTENT ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-start px-2 pt-2 pb-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-start px-2 pt-2 pb-4 scroll-touch">
 
         {/* ══ HOME TAB ════════════════════════════════════════════ */}
         {activeTab === "home" && currentHook && (
@@ -939,7 +939,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                       <p className="text-xs text-center text-[#90e0ef] mb-2">{playlistMessage}</p>
                     )}
                     {addSearchResults.length > 0 && (
-                      <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                      <div className="flex flex-col gap-2 max-h-60 scroll-touch">
                         {addSearchResults.map((track) => (
                           <div key={track.trackId} className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2">
                             <img src={track.albumArt} alt={track.title}
