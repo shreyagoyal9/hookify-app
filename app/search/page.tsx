@@ -151,8 +151,8 @@ export default function SearchPage() {
     const { error } = await supabase.from("saved_hooks").insert({
       user_id: activeUserId, track_id: track.id, title: track.title,
       artist: track.artist, album: track.album, album_art: track.albumArt,
-      preview_url: track.previewUrl, hook_start: track.hookStart,
-      hook_end: track.hookEnd, gradient: track.gradient,
+      preview_url: track.previewUrl, hook_start: Math.round(track.hookStart),
+      hook_end: Math.round(track.hookEnd), gradient: track.gradient,
     });
     if (!error) {
       setSavedTracks((prev) => new Set([...prev, track.id]));
@@ -227,8 +227,8 @@ export default function SearchPage() {
       album:        selectedTrack.album        ?? "Single",
       album_art:    selectedTrack.albumArt     ?? "",
       preview_url:  selectedTrack.previewUrl   ?? "",
-      hook_start:   selectedTrack.hookStart,
-      hook_end:     selectedTrack.hookEnd,
+      hook_start:   Math.round(selectedTrack.hookStart),
+      hook_end:     Math.round(selectedTrack.hookEnd),
       gradient:     selectedTrack.gradient     ?? "",
     });
     if (!error) {

@@ -262,8 +262,8 @@ export default function HomePage() {
       const newRow = {
         track_id: currentHook.id, title: currentHook.title,
         artist: currentHook.artist, album: currentHook.album, album_art: currentHook.albumArt,
-        preview_url: currentHook.previewUrl, hook_start: currentHook.hookStart,
-        hook_end: currentHook.hookEnd, gradient: currentHook.gradient,
+        preview_url: currentHook.previewUrl, hook_start: Math.round(currentHook.hookStart),
+        hook_end: Math.round(currentHook.hookEnd), gradient: currentHook.gradient,
         created_at: new Date().toISOString(),
       };
       setSavedHooksFull((prev) => [newRow, ...prev]);
@@ -275,8 +275,8 @@ export default function HomePage() {
         await supabase.from("saved_hooks").insert({
           user_id: userId, track_id: currentHook.id, title: currentHook.title,
           artist: currentHook.artist, album: currentHook.album, album_art: currentHook.albumArt,
-          preview_url: currentHook.previewUrl, hook_start: currentHook.hookStart,
-          hook_end: currentHook.hookEnd, gradient: currentHook.gradient,
+          preview_url: currentHook.previewUrl, hook_start: Math.round(currentHook.hookStart),
+          hook_end: Math.round(currentHook.hookEnd), gradient: currentHook.gradient,
         });
       }
     }
@@ -354,8 +354,8 @@ export default function HomePage() {
       album:        currentHook.album      ?? "Single",
       album_art:    currentHook.albumArt   ?? "",
       preview_url:  currentHook.previewUrl ?? "",
-      hook_start:   currentHook.hookStart,
-      hook_end:     currentHook.hookEnd,
+      hook_start:   Math.round(currentHook.hookStart),
+      hook_end:     Math.round(currentHook.hookEnd),
       gradient:     currentHook.gradient   ?? "",
     });
     if (error) {
