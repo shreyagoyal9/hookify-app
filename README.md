@@ -2,140 +2,147 @@
 
 <div align="center">
 
-<img src="public/Elephant_Beats.jpeg" alt="Hookify Logo" width="120"/>
+<img src="public/Elephant_Beats.jpeg" alt="Hookify Logo" width="110" style="border-radius:50%"/>
 
-### *just the hook. 15 seconds. the best part. skip everything else.*
+### *just the hook. 15 seconds. the best part.*
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-hookify--app--chi.vercel.app-90e0ef?style=for-the-badge)](https://hookify-app-chi.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-hookify--app--chi.vercel.app-90e0ef?style=for-the-badge&logo=vercel)](https://hookify-app-chi.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-shreyagoyal9-181717?style=for-the-badge&logo=github)](https://github.com/shreyagoyal9/hookify-app)
-[![Railway](https://img.shields.io/badge/AI%20Server-Railway-blueviolet?style=for-the-badge)](https://web-production-c2177.up.railway.app/docs)
+[![AI Server](https://img.shields.io/badge/AI%20Server-Railway-blueviolet?style=for-the-badge&logo=railway)](https://web-production-c2177.up.railway.app/docs)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
 
 </div>
 
 ---
 
-## 🎯 The Problem
+## 🎯 The Idea
 
-You open Spotify. A 3-minute song plays. You wait... and wait... for that **one moment** — the hook — the 15 seconds that made you love the song.
+You open Spotify. A 3-minute song plays. You wait... skip ahead... wait some more... for that **one moment** — the hook — the 15 seconds that made you love the song in the first place.
 
-**Gen Z and Gen Alpha don't wait.** They swipe Reels. They watch Shorts. They want the best part, right now.
+**Hookify skips straight to it.**
 
-**Hookify gives them exactly that.**
-
----
-
-## ✨ What is Hookify?
-
-Hookify is a **TikTok-style music app** that plays only the hook (catchiest part) of trending songs — powered by a custom AI model that automatically detects where the hook starts and ends in any song.
-
-> 📸 **[Loading screen with elephant mascot]**
-> <img width="682" height="476" alt="Screenshot 2026-05-26 at 3 19 43 PM" src="https://github.com/user-attachments/assets/114568a4-3aa5-418f-9ba8-b214c608445b" />
+It's a TikTok-style music app that plays only the catchiest part of any song, detected automatically by a custom AI model built from scratch using Python and librosa.
 
 ---
 
-## 🚀 Live Demo
+## ✨ Features
 
-👉 **[hookify-app-chi.vercel.app](https://hookify-app-chi.vercel.app)**
+### 🎵 Core
+- **AI Hook Detection** — custom Python/librosa model finds the hook of any song automatically
+- **TikTok-style swipe feed** — swipe left/right to move between trending hooks
+- **Spinning vinyl** — animated vinyl record with real album art from iTunes
+- **Real 30s audio previews** — plays the exact hook section, not the full song
+- **Loop mode** — tap to loop the hook on repeat 🔁
+- **Play/pause via elephant** — tap the mascot in the top-right to control playback
 
-- Sign up with email or Google
-- Swipe through today's globally trending hooks
-- Search any song — AI detects the hook automatically
-- Save your favorite hooks
-- Create playlists
+### 🔍 Search
+- Search any song or artist from iTunes' full catalogue
+- AI detects hook timestamps in the background for each result
+- Full card view with single-finger swipe gestures (up = next, down = back)
+- Search history — recent searches saved locally as tappable chips
+- Clear all history with one tap
 
----
+### 🔥 Trending
+- Pulls **real iTunes top 25 chart data** updated daily (no API key needed)
+- Medal rankings: 🥇🥈🥉 for top 3
+- Tap any charting song to jump straight to its hook in the feed
 
-## 📱 Screenshots
+### 👤 Profile
+- Listening stats: saves, total plays, playlists created
+- **Top artists bar chart** — see which artists you play most
+- **Listener level badge** — Hook Newbie → Explorer → Fan → Addict, based on play count
+- Member since date
 
-> 📸 <img width="872" height="768" alt="Screenshot 2026-05-26 at 3 19 30 PM" src="https://github.com/user-attachments/assets/882e0bd3-a188-475e-a540-f6cc97180555" />
+### ❤️ Saved Hooks
+- Heart any hook to save it permanently
+- Play/pause saved hooks directly from the saved tab
+- Remove saved hooks instantly
 
+### 🎵 Playlists
+- Create unlimited playlists
+- Add any hook from the feed, search results, or saved collection
+- **Search and add songs directly inside a playlist** — with a preview button to hear before adding
+- Remove songs with 🗑️
+- Play all — plays every hook back-to-back automatically
+- Delete playlists
 
-> 📸 <img width="1470" height="836" alt="Screenshot 2026-05-26 at 3 22 17 PM" src="https://github.com/user-attachments/assets/bf065a96-6ddc-4b07-951a-9b0712e00274" />
+### 📤 Share
+- Every hook generates a unique `/share/[trackId]` link
+- The share page works without login — anyone can preview the hook and open Hookify
+- Uses native share sheet on mobile, copies link to clipboard on desktop
 
->you can control pause play from the top right dancing elephant also.
-><img width="109" height="61" alt="Screenshot 2026-05-26 at 3 23 26 PM" src="https://github.com/user-attachments/assets/293f6fcb-cbab-41aa-af64-b46b6eb2aec5" />
+### 🐘 Onboarding
+- First-time users see a welcome screen explaining how Hookify works
+- Dismisses with one tap, never shows again
 
-
-> 📸 <img width="1470" height="835" alt="Screenshot 2026-05-26 at 3 25 14 PM" src="https://github.com/user-attachments/assets/90f4fbc5-dd4c-426b-89ea-f2f262ba6577" />
-
-
-> 📸 <img width="1470" height="829" alt="Screenshot 2026-05-26 at 3 25 52 PM" src="https://github.com/user-attachments/assets/207c59a8-a8be-4ec7-b83a-7cb56268e215" />
-
-
-> 📸 <img width="1469" height="834" alt="Screenshot 2026-05-26 at 3 27 12 PM" src="https://github.com/user-attachments/assets/b9a12dbc-8a9f-4a72-86fb-0562b59ae32c" />
-
-
-> 📸 **[ADD SCREENSHOT: Playlists tab]**
-
-> 📸 <img width="1470" height="883" alt="Screenshot 2026-05-26 at 3 29 29 PM" src="https://github.com/user-attachments/assets/e34a9f3a-bb56-437d-b4ef-0a0549337bea" />
-
+### 📊 Admin Dashboard
+- Password-protected at `/admin`
+- Real-time stats: total users, plays, saves, playlists
+- Top 5 most played songs
+- Recent play log with timestamps and user emails
+- Full user list with per-user stats
 
 ---
 
 ## 🧠 How the AI Works
 
-This is the most unique part of Hookify — a **custom audio analysis model** built from scratch using Python.
+The hook detector is a **custom audio analysis model** — no pre-trained ML, built from scratch.
 
-Any song URL
-↓
-Download 30s preview (iTunes API)
-↓
-Convert to WAV (ffmpeg)
-↓
-Extract audio features (librosa):
-• RMS Energy     → measures loudness/energy at each moment
-• Spectral Centroid → measures brightness/melody
-• Onset Strength → measures rhythmic activity
-↓
-Combine into "hookiness score" per frame
-hookiness = 0.5×energy + 0.3×melody + 0.2×rhythm
-↓
-Slide 15-second window across song
-Find window with highest average hookiness
-↓
-Return { hook_start: 14.7s, hook_end: 29.7s }
+```
+iTunes preview URL (30s .m4a)
+        ↓
+  Download audio
+        ↓
+  Convert to WAV (ffmpeg)
+        ↓
+  Extract audio features (librosa):
+    • RMS Energy            → loudness / intensity at each moment
+    • Spectral Centroid     → brightness / melody content
+    • Onset Strength        → rhythmic / beat activity
+    • Chroma Self-similarity → melody repetition (hooks repeat!)
+        ↓
+  Combine into "hookiness score" per frame:
+    hookiness = 0.35×energy + 0.20×brightness + 0.15×rhythm + 0.30×repetition
+        ↓
+  Slide 15-second window across the song
+  Find the window with the highest average hookiness
+        ↓
+  Return { hook_start: 14.2s, hook_end: 29.2s, confidence: 0.87 }
+```
 
-> 📸 **[ADD SCREENSHOT: Browser console showing 🤖 AI hook timestamps]**
+The chroma self-similarity component is key — choruses appear 2–3 times in a song, so measuring how much a window's melody matches other parts of the song reliably identifies the chorus / hook.
 
-The model runs on a **FastAPI server deployed on Railway**, called automatically when any song loads.
+The model runs on **FastAPI (Python)** deployed on Railway and is called automatically for every song that loads.
 
 ---
 
-## 🏗️ System Architecture
-```text
-┌─────────────────────────────────────────────────────┐
-│                    USER                             │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│          Next.js Frontend (Vercel)                  │
-│                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │
-│  │  Login   │  │  Home    │  │     Search       │   │
-│  │ Supabase │  │  Swipe   │  │  Full Card View  │   │
-│  │  Auth    │  │  Feed    │  │  Swipe Gestures  │   │
-│  └──────────┘  └──────────┘  └──────────────────┘   │
-└──────┬──────────────┬───────────────────┬───────────┘
-       │              │                   │
-       ▼              ▼                   ▼
-┌──────────┐  ┌──────────────┐  ┌────────────────────┐
-│ Supabase │  │  iTunes API  │  │  Railway AI Server │
-│          │  │              │  │                    │
-│ • Users  │  │ • Song data  │  │  Python + FastAPI  │
-│ • Saved  │  │ • 30s audio  │  │  librosa analysis  │
-│ • Plays  │  │ • Album art  │  │  ffmpeg conversion │
-│ • Lists  │  └──────────────┘  └────────────────────┘
-└──────────┘
-    ▲
-    │
-┌──────────────┐
-│ YouTube API  │
-│              │
-│ Trending     │
-│ music feed   │
-│ (auto-update)│
-└──────────────┘
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        USER                             │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│             Next.js 16 Frontend (Vercel)                │
+│                                                         │
+│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌───────┐  │
+│  │  Login   │  │   Home   │  │  Search   │  │ Share │  │
+│  │  OAuth   │  │  Swipe   │  │  + Swipe  │  │  Page │  │
+│  └──────────┘  └──────────┘  └───────────┘  └───────┘  │
+└──────┬─────────────────┬──────────────────┬─────────────┘
+       │                 │                  │
+       ▼                 ▼                  ▼
+┌────────────┐   ┌───────────────┐  ┌──────────────────┐
+│  Supabase  │   │  iTunes API   │  │  Railway AI      │
+│            │   │               │  │  Server          │
+│  • auth    │   │  • song data  │  │                  │
+│  • saves   │   │  • 30s audio  │  │  Python+FastAPI  │
+│  • plays   │   │  • album art  │  │  librosa model   │
+│  • lists   │   │  • top charts │  │  ffmpeg convert  │
+└────────────┘   └───────────────┘  └──────────────────┘
 ```
 
 ---
@@ -144,254 +151,265 @@ The model runs on a **FastAPI server deployed on Railway**, called automatically
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| Frontend | Next.js 16 + TypeScript | App framework |
-| Styling | Tailwind CSS | UI design |
-| Animations | Framer Motion | Swipe gestures, transitions |
-| Audio | iTunes Search API | Free 30s song previews |
-| AI Model | Python + librosa | Hook detection algorithm |
-| AI Server | FastAPI + uvicorn | REST API for AI |
-| Audio Processing | ffmpeg | Convert m4a to wav |
-| Trending Data | YouTube Data API v3 | Real trending songs |
-| Database | Supabase (PostgreSQL) | Users, saves, playlists |
-| Authentication | Supabase Auth + Google OAuth | Login system |
-| Frontend Deploy | Vercel | Auto-deploys on git push |
-| AI Deploy | Railway | Python server hosting |
-| Version Control | GitHub | Code + collaboration |
+| Framework | Next.js 16 + TypeScript | App shell, routing, API routes |
+| Styling | Tailwind CSS | Dark theme, gradients, layout |
+| Animations | Framer Motion | Swipe gestures, card transitions |
+| Music Data | iTunes Search API | Song metadata + free 30s previews |
+| Charts | iTunes RSS Feed | Real top 25 chart data, no key needed |
+| AI Model | Python + librosa | Custom hook detection algorithm |
+| AI Server | FastAPI + uvicorn | REST API wrapping the Python model |
+| Audio Processing | ffmpeg | Convert .m4a previews to .wav |
+| Database | Supabase (PostgreSQL) | Saves, plays, playlists, users |
+| Auth | Supabase Auth + Google OAuth | Login system |
+| Frontend Deploy | Vercel | Auto-deploys on every git push |
+| AI Deploy | Railway | Python server, always-on |
 
 ---
 
-## ✅ Features
+## 📱 App Pages
 
-### 🎵 Core Features
-- **Hook Detection AI** — Custom librosa model detects the hook of ANY song automatically
-- **TikTok-style swipe feed** — Drag cards left/right to discover hooks
-- **Spinning vinyl** — Beautiful rotating vinyl with real album art from iTunes
-- **Real audio** — Plays the actual hook section (not the full song)
-- **Loop mode** — Loop the hook continuously 🔁
-
-### 🔍 Search
-- Search any song or artist in the world
-- Results appear instantly
-- AI detects hook timestamps in the background
-- Full card view with swipe gestures (swipe up = next song, swipe down = close)
-
-### 👤 User Features
-- Email signup / Google OAuth login
-- Save favorite hooks ❤️
-- Create multiple playlists
-- Share hooks with friends 📤
-- Profile with listening stats
-
-### 📊 Admin Dashboard
-- Real-time user analytics
-- Most played hooks
-- Recent plays with user emails
-- Total users, plays, saves, playlists
-
-### 🔥 Trending
-- Auto-updates daily with globally trending music from YouTube
-- Works for ALL languages — English, Hindi, Korean, Spanish, anything!
+| Route | Description |
+|---|---|
+| `/` | Loading splash screen |
+| `/login` | Email/password + Google OAuth |
+| `/home` | Main app — home, trending, saved, playlists, profile tabs |
+| `/search` | Search any song, AI hook detection, swipeable cards |
+| `/share/[trackId]` | Public shareable hook card — no login required |
+| `/admin` | Password-protected analytics dashboard |
 
 ---
 
-## 🚀 Getting Started (For Developers)
+## 🚀 Getting Started
 
 ### Prerequisites
-Node.js v18+
-Python 3.9+
-npm
-pip
 
-### 1. Clone the repo
+- Node.js v18+
+- Python 3.9+
+- npm / pip
+
+### 1. Clone
+
 ```bash
 git clone https://github.com/shreyagoyal9/hookify-app.git
 cd hookify-app
 ```
 
 ### 2. Install dependencies
+
 ```bash
-# Next.js dependencies
+# Next.js frontend
 npm install
 
-# Python AI dependencies
+# Python AI server (inside hookify-ai/)
 pip install librosa numpy scipy fastapi uvicorn python-multipart httpx static-ffmpeg
 ```
 
-### 3. Set up environment variables
-Create `.env.local`:
+### 3. Environment variables
+
+Create `.env.local` in the project root:
+
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-YOUTUBE_API_KEY=your_youtube_api_key
+ADMIN_PASSWORD=your_admin_dashboard_password
 ```
 
-### 4. Set up Supabase
-Run these SQL queries in Supabase SQL Editor:
+### 4. Supabase setup
+
+Run this in your Supabase SQL Editor:
+
 ```sql
--- Saved hooks table
+-- Saved hooks
 create table saved_hooks (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade,
   track_id bigint, title text, artist text, album text,
-  album_art text, preview_url text, hook_start integer,
-  hook_end integer, gradient text,
-  created_at timestamp with time zone default now()
+  album_art text, preview_url text,
+  hook_start float8, hook_end float8, gradient text,
+  created_at timestamptz default now()
 );
 
--- Playlists table
+-- Playlists
 create table playlists (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade,
   name text not null,
-  created_at timestamp with time zone default now()
+  created_at timestamptz default now()
 );
 
--- Hook plays tracking
+-- Playlist tracks
+create table playlist_tracks (
+  id uuid default gen_random_uuid() primary key,
+  playlist_id uuid references playlists(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
+  track_id bigint, title text, artist text, album text,
+  album_art text, preview_url text,
+  hook_start float8, hook_end float8, gradient text,
+  created_at timestamptz default now()
+);
+
+-- Play history
 create table hook_plays (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) on delete cascade,
-  user_email text, track_id bigint,
-  title text, artist text,
-  played_at timestamp with time zone default now()
+  user_email text, track_id bigint, title text, artist text,
+  played_at timestamptz default now()
 );
+
+-- Enable RLS
+alter table saved_hooks     enable row level security;
+alter table playlists       enable row level security;
+alter table playlist_tracks enable row level security;
+alter table hook_plays      enable row level security;
+
+-- RLS policies — users see only their own data
+create policy "own data" on saved_hooks     for all using (auth.uid() = user_id);
+create policy "own data" on playlists       for all using (auth.uid() = user_id);
+create policy "own data" on playlist_tracks for all using (auth.uid() = user_id);
+create policy "own data" on hook_plays      for all using (auth.uid() = user_id);
 ```
 
 ### 5. Start the AI server
+
 ```bash
-cd hookify-ai  # or from hookify-app root
+cd hookify-ai
 uvicorn api:app --reload --port 8000
 ```
 
-### 6. Start the Next.js app
+### 6. Start the app
+
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) 🎉
+Open [http://localhost:3000](http://localhost:3000) 🎧
 
 ---
 
 ## 📁 Project Structure
-```text
+
+```
 hookify-app/
 ├── app/
-│   ├── page.tsx              # Loading screen
-│   ├── layout.tsx            # Root layout
-│   ├── login/
-│   │   └── page.tsx          # Login / Signup
-│   ├── home/
-│   │   └── page.tsx          # Main TikTok feed
-│   ├── search/
-│   │   └── page.tsx          # Search with full card view
-│   ├── admin/
-│   │   └── page.tsx          # Analytics dashboard
+│   ├── page.tsx                  # Loading / splash screen
+│   ├── layout.tsx                # Root layout + viewport config
+│   ├── globals.css               # Global styles + scroll helpers
+│   ├── login/page.tsx            # Email + Google OAuth login
+│   ├── home/page.tsx             # Main app — all tabs
+│   ├── search/page.tsx           # Search + swipeable card view
+│   ├── share/[trackId]/page.tsx  # Public shareable hook page
+│   ├── admin/page.tsx            # Analytics dashboard
 │   └── api/
-│       ├── trending/         # YouTube trending endpoint
-│       ├── search/           # iTunes search proxy
-│       └── detect-hook/      # AI hook detection bridge
+│       ├── trending/route.ts     # iTunes RSS top charts
+│       ├── search/route.ts       # iTunes search proxy
+│       ├── detect-hook/route.ts  # Bridge to Python AI server
+│       └── admin-auth/route.ts   # Admin password check
 ├── lib/
-│   ├── itunes.ts             # iTunes API + AI integration
-│   └── supabase.ts           # Supabase client
-├── public/
-│   └── Elephant_Beats.jpeg   # Hookify mascot 🐘
-├── detect_hook.py            # AI hook detection model
-├── api.py                    # FastAPI server
-└── requirements.txt          # Python dependencies
+│   ├── itunes.ts                 # iTunes API + AI integration + types
+│   └── supabase.ts               # Supabase client
+└── public/
+    └── Elephant_Beats.jpeg       # 🐘 Hookify mascot
+
+hookify-ai/
+├── detect_hook.py                # AI hook detection model
+├── api.py                        # FastAPI server
+└── requirements.txt              # Python dependencies
 ```
+
 ---
 
-## 🗺️ Roadmap
+## ✅ Roadmap
 
-- [x] Loading screen with elephant mascot
-- [x] Login / Signup — Supabase Auth
-- [x] Google OAuth login
+- [x] Loading / splash screen
+- [x] Email + Google OAuth login
 - [x] TikTok-style swipe feed
 - [x] Spinning vinyl with real album art
-- [x] Real audio — iTunes API
-- [x] AI Hook Detection — librosa + FastAPI
-- [x] AI server deployed on Railway
-- [x] YouTube trending — auto-updates daily
-- [x] Search any song — AI detects hook instantly
-- [x] Full card view with swipe gestures
-- [x] Loop mode 🔁
-- [x] Save / like hooks — persists in database
-- [x] Playlists — create, add, delete
-- [x] Share button
-- [x] Admin analytics dashboard
-- [x] Play tracking with user emails
-- [x] Deployed on Vercel
-- [ ] Mobile app (React Native)
-- [ ] Improved AI model with more audio features
-- [ ] Social features — follow friends, see what they're listening to
+- [x] iTunes API — real 30s audio previews
+- [x] Custom AI hook detection (librosa + chroma self-similarity)
+- [x] AI server on Railway (always-on)
+- [x] Real iTunes top 25 chart data (daily, no API key)
+- [x] Search any song — AI timestamps detected in background
+- [x] Swipe gestures in search card view
+- [x] Loop mode
+- [x] Save / like hooks (persisted in Supabase)
+- [x] Playlists — create, add, remove, play all
+- [x] Add songs to playlist by searching inside the playlist
+- [x] Public shareable hook pages (`/share/[trackId]`)
+- [x] Rich profile page — stats, top artists, listener level
+- [x] Onboarding screen for new users
+- [x] Search history (recent searches as tappable chips)
+- [x] Admin analytics dashboard (password protected)
+- [x] Mobile-first layout — locked viewport, single-finger scroll
+- [ ] React Native mobile app
+- [ ] Improved AI with larger feature set + user feedback loop
+- [ ] Social features — follow friends, shared playlists
 - [ ] Artist pages
-- [ ] Offline mode
+- [ ] Lyrics-aligned hook detection
 
 ---
 
-## 🤖 AI Hook Detection — Technical Deep Dive
+## 🤖 AI Model — Technical Detail
 
-For those interested in the ML side:
+### Audio features
 
-### Audio Features Used
-
-**1. RMS Energy (50% weight)**
+**RMS Energy — 35% weight**
 ```python
 rms = librosa.feature.rms(y=y)[0]
-# Measures loudness at each frame
-# Hooks are usually louder/more energetic
+# Hooks are louder and more intense than verses
 ```
 
-**2. Spectral Centroid (30% weight)**
+**Spectral Centroid — 20% weight**
 ```python
-spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
-# Measures "brightness" of sound
-# Higher = more treble = typically more melodic
+centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+# Higher = brighter, more melodic sound
 ```
 
-**3. Onset Strength (20% weight)**
+**Onset Strength — 15% weight**
 ```python
-onset_strength = librosa.onset.onset_strength(y=y, sr=sr)
-# Measures rhythmic activity
-# High = lots of beats = energetic section
+onset = librosa.onset.onset_strength(y=y, sr=sr)
+# Rhythmic density — hooks have strong, consistent beats
 ```
 
-### Hook Finding Algorithm
+**Chroma Self-Similarity — 30% weight**
 ```python
-# Combine features into hookiness score
-hookiness = 0.5 * rms + 0.3 * spectral_centroid + 0.2 * onset_strength
-
-# Slide 15-second window across song
-# Find window with highest average hookiness
-best_start = argmax(sliding_window_mean(hookiness, window=15s))
+chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+# Compares each window's melody against all other windows
+# Hooks repeat in a song → high self-similarity = hook
+sim = cosine_similarity(window_chroma, other_windows)
 ```
 
-### Future Improvements (Option B)
-- Train on labeled dataset of known hooks
-- Add melody repetition detection
-- Use lyrics timestamps for hook identification
-- Fine-tune weights using user feedback data
+**Combined hookiness score**
+```python
+hookiness = (
+    0.35 * normalize(rms)     +
+    0.20 * normalize(centroid) +
+    0.15 * normalize(onset)   +
+    0.30 * repetition_score
+)
+# Slide 15s window across song → return the peak window
+```
 
 ---
 
-## 👩‍💻 About the Developers
+## 👩‍💻 Built By
 
-Built by **Shreya Goyal** and **Shansit Suman** — Web Development + AIML students.
+**Shreya Goyal** & **Shansit Suman** — Web Dev + AIML students.
 
+- 🌐 Live app: [hookify-app-chi.vercel.app](https://hookify-app-chi.vercel.app)
+- 🤖 AI API docs: [web-production-c2177.up.railway.app/docs](https://web-production-c2177.up.railway.app/docs)
 - 🐙 GitHub: [@shreyagoyal9](https://github.com/shreyagoyal9)
-- 🌐 Live App: [hookify-app-chi.vercel.app](https://hookify-app-chi.vercel.app)
-- 🤖 AI API Docs: [web-production-c2177.up.railway.app/docs](https://web-production-c2177.up.railway.app/docs)
 
 ---
 
 ## 📄 License
 
-MIT License — feel free to use this project for learning!
+MIT — free to use for learning and personal projects.
 
 ---
 
 <div align="center">
 
-Made with 🐘 and 🎵 by Shreya Goyal & Shansit Suman.
+made with 🐘 and 🎵 by Shreya & Shansit
 
 *just the hook. always.*
 
