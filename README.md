@@ -375,7 +375,7 @@ best_start = argmax(sliding_window_mean(hookiness, window=15s))
 
 ## 👩‍💻 About the Developers
 
-Built by **Shreya Goyal** and **Shansit** — Web Development + AIML students.
+Built by **Shreya Goyal** and **Shansit Suman** — Web Development + AIML students.
 
 - 🐙 GitHub: [@shreyagoyal9](https://github.com/shreyagoyal9)
 - 🌐 Live App: [hookify-app-chi.vercel.app](https://hookify-app-chi.vercel.app)
