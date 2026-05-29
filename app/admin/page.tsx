@@ -36,6 +36,16 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Admin is a scrollable desktop page — remove the mobile overflow-hidden lock
+  useEffect(() => {
+    document.body.style.overflow = "auto";
+    document.body.style.height   = "auto";
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.height   = "";
+    };
+  }, []);
+
   useEffect(() => {
     const saved = sessionStorage.getItem("hookify_admin_authed");
     if (saved === "true") setAuthed(true);
@@ -170,7 +180,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0e1a] text-white p-8">
+    <main className="min-h-screen bg-[#0a0e1a] text-white p-8 overflow-y-auto" style={{ height: "auto", maxHeight: "none" }}>
       <div className="max-w-6xl mx-auto">
 
         {/* Header */}
