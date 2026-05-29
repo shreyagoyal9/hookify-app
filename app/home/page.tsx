@@ -381,7 +381,6 @@ const startPlaylistPlay = (playlist: Playlist) => {
 };
 
 const openPlaylistDetail = (playlist: Playlist) => {
-  console.log("CLICKED:", playlist.name);
   setOpenPlaylist(playlist);
   setLoadingTracks(true);
   supabase
@@ -496,6 +495,13 @@ const openPlaylistDetail = (playlist: Playlist) => {
         );
       })()}
 
+      {/* ── SHARE TOAST ─────────────────────────────────────────── */}
+      {shareToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] bg-[#0e2a3b] border border-[#90e0ef]/40 text-[#90e0ef] text-sm px-5 py-2.5 rounded-full shadow-lg animate-pulse pointer-events-none">
+          {shareToast}
+        </div>
+      )}
+
       {/* ── PLAYLIST MODAL ──────────────────────────────────────── */}
       {showPlaylistModal && (
         <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center px-4">
@@ -593,51 +599,53 @@ const openPlaylistDetail = (playlist: Playlist) => {
                   if (diff < -60) swipeNext();
                   else if (diff > 60) swipePrev();
                 }}
-                className={`bg-gradient-to-br ${currentHook.gradient} rounded-3xl p-8 border border-white/10 cursor-grab flex flex-col justify-between min-h-[78vh]`}
+                className={`bg-gradient-to-br ${currentHook.gradient} rounded-3xl p-5 sm:p-8 border border-white/10 cursor-grab active:cursor-grabbing flex flex-col justify-between min-h-[72vh]`}
                 style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}
               >
                 {/* Vinyl */}
                 <div className="flex justify-center mb-4">
                   <div className="relative">
-                    <div className={`w-80 h-80 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${isPlaying ? "animate-spin" : ""}`}
+                    <div className={`w-56 h-56 sm:w-64 sm:h-64 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${isPlaying ? "animate-spin" : ""}`}
                       style={{ animationDuration: "4s" }}>
-                      <div className="w-72 h-72 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
+                      <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
                         style={{ background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)" }}>
-                        <div className="w-60 h-60 rounded-full border border-white/5 flex items-center justify-center">
-                          <div className="w-48 h-48 rounded-full border border-white/5 flex items-center justify-center">
-                            <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
-                              <img src={currentHook.albumArt} alt={currentHook.album} className="w-full h-full object-cover" />
-                            </div>
+                        <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border border-white/5 flex items-center justify-center">
+                          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
+                            <img src={currentHook.albumArt} alt={currentHook.album} className="w-full h-full object-cover" />
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#0a0e1a] border border-white/20" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#0a0e1a] border border-white/20" />
                   </div>
                 </div>
 
                 {/* Song info */}
-                <div className="text-center mb-4">
-                  <h2 className="text-3xl font-medium mb-1">{currentHook.title}</h2>
-                  <p className="text-[#90e0ef] text-base mb-0.5">{currentHook.artist}</p>
-                  <p className="text-gray-500 text-sm">{currentHook.album}</p>
+                <div className="text-center mb-4 px-2">
+                  <h2 className="text-2xl sm:text-3xl font-medium mb-1 truncate">{currentHook.title}</h2>
+                  <p className="text-[#90e0ef] text-sm sm:text-base mb-0.5 truncate">{currentHook.artist}</p>
+                  <p className="text-gray-500 text-xs sm:text-sm truncate">{currentHook.album}</p>
                 </div>
 
                 {/* Stats */}
-                <div className="flex justify-center gap-6 mb-6">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">duration</p>
-                    <p className="text-base text-[#90e0ef] font-medium">0:30</p>
-                  </div>
-                  <div className="w-px bg-white/10" />
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">source</p>
-                    <p className="text-base text-[#90e0ef] font-medium">iTunes</p>
-                  </div>
-                  <div className="w-px bg-white/10" />
+                <div className="flex justify-center gap-4 sm:gap-6 mb-5">
                   <div className="text-center">
                     <p className="text-xs text-gray-400 mb-1">hook</p>
-                    <p className="text-base text-[#90e0ef] font-medium">#{currentIndex + 1}</p>
+                    <p className="text-sm sm:text-base text-[#90e0ef] font-medium">
+                      {currentHook.hookStart}s – {currentHook.hookEnd}s
+                    </p>
+                  </div>
+                  <div className="w-px bg-white/10" />
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400 mb-1">track</p>
+                    <p className="text-sm sm:text-base text-[#90e0ef] font-medium">#{currentIndex + 1} / {hooks.length}</p>
+                  </div>
+                  <div className="w-px bg-white/10" />
+                  <div className="text-center">
+                    <p className="text-xs text-gray-400 mb-1">saved</p>
+                    <p className="text-sm sm:text-base font-medium">
+                      {savedHooks.includes(currentHook.id) ? <span className="text-red-400">❤️</span> : <span className="text-gray-500">🤍</span>}
+                    </p>
                   </div>
                 </div>
 
@@ -652,11 +660,6 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     {isPlaying ? "⏸" : "▶"}
                   </button>
                 </div>
-
-                {/* Share toast */}
-                {shareToast && (
-                  <p className="text-center text-green-400 text-sm animate-pulse mb-2">{shareToast}</p>
-                )}
 
                 {/* Action buttons */}
                 <div className="flex justify-around items-center">
@@ -684,7 +687,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     }`}>
                       🔁
                     </span>
-                    <span className="text-xs text-gray-500">{isLooping ? "looping" : "loop"}</span>
+                    <span className={`text-xs ${isLooping ? "text-[#90e0ef]" : "text-gray-500"}`}>loop{isLooping ? " on" : ""}</span>
                   </button>
 
                   <button onClick={() => setShowPlaylistModal(true)} className="flex flex-col items-center gap-1 group">
@@ -694,7 +697,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 </div>
               </div>
             </AnimatePresence>
-            <p className="text-center text-gray-600 text-xs mt-3">← drag to swipe hooks →</p>
+            <p className="text-center text-gray-500 text-xs mt-3 tracking-wide">← swipe to change hook →</p>
           </div>
         )}
 
@@ -765,13 +768,21 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     <p className="font-medium truncate">{hook.title}</p>
                     <p className="text-sm text-gray-400 truncate">{hook.artist}</p>
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full ${
-                    index === 0 ? "bg-red-500/15 text-red-400" :
-                    index === 1 ? "bg-[#90e0ef]/15 text-[#90e0ef]" :
-                    "bg-green-500/15 text-green-400"
-                  }`}>
-                    {index === 0 ? "hot" : index === 1 ? "viral" : "new"}
-                  </span>
+                  {(() => {
+                    const badges = [
+                      { label: "🔥 hot",    cls: "bg-red-500/15 text-red-400"         },
+                      { label: "⚡ viral",  cls: "bg-[#90e0ef]/15 text-[#90e0ef]"     },
+                      { label: "🚀 rising", cls: "bg-purple-500/15 text-purple-400"   },
+                      { label: "✨ new",    cls: "bg-green-500/15 text-green-400"      },
+                      { label: "💫 fresh",  cls: "bg-yellow-500/15 text-yellow-400"   },
+                    ];
+                    const b = badges[Math.min(index, badges.length - 1)];
+                    return (
+                      <span className={`text-xs px-3 py-1 rounded-full flex-shrink-0 ${b.cls}`}>
+                        {b.label}
+                      </span>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -918,8 +929,8 @@ const openPlaylistDetail = (playlist: Playlist) => {
           <div className="w-full max-w-2xl text-center">
             <Image src="/Elephant_Beats.jpeg" alt="Profile" width={90} height={90}
               className="rounded-full border-2 border-[#90e0ef] mx-auto mb-4 shadow-[0_0_20px_rgba(144,224,239,0.4)]" />
-            <h2 className="text-xl font-medium mb-1">{userEmail || "hook listener"}</h2>
-            <p className="text-gray-400 text-sm mb-8">hook listener 🎧</p>
+            <h2 className="text-xl font-medium mb-1 truncate px-4">{userEmail || "hook listener"}</h2>
+            <p className="text-gray-500 text-sm mb-8">🎧 hook listener</p>
             <div className="flex justify-center gap-8 mb-8">
               <div>
                 <p className="text-2xl font-medium text-[#90e0ef]">{savedHooks.length}</p>
@@ -945,14 +956,14 @@ const openPlaylistDetail = (playlist: Playlist) => {
       </div>
 
       {/* ── BOTTOM NAV ──────────────────────────────────────────── */}
-      <nav className="flex justify-around items-center px-6 py-4 border-t border-white/10 bg-[#0a0e1a]">
+      <nav className="flex justify-around items-center px-2 py-3 border-t border-white/10 bg-[#0a0e1a] safe-bottom">
         {[
-          { id: "home",      icon: "🏠", label: "home",      href: null        },
-          { id: "trending",  icon: "🔥", label: "trending",  href: null        },
-          { id: "saved",     icon: "💾", label: "saved",     href: null        },
-          { id: "search",    icon: "🔍", label: "search",    href: "/search"   },
-          { id: "playlists", icon: "🎵", label: "playlists", href: null        },
-          { id: "profile",   icon: "👤", label: "profile",   href: null        },
+          { id: "home",      icon: "🏠", label: "home"      , href: null      },
+          { id: "trending",  icon: "🔥", label: "trending"  , href: null      },
+          { id: "saved",     icon: "💾", label: "saved"     , href: null      },
+          { id: "search",    icon: "🔍", label: "search"    , href: "/search" },
+          { id: "playlists", icon: "🎵", label: "lists"     , href: null      },
+          { id: "profile",   icon: "👤", label: "profile"   , href: null      },
         ].map((tab) => (
           <button key={tab.id}
             onClick={() => {
@@ -960,11 +971,15 @@ const openPlaylistDetail = (playlist: Playlist) => {
               if (tab.id === "playlists") setOpenPlaylist(null);
               setActiveTab(tab.id);
             }}
-            className={`flex flex-col items-center gap-1 transition-all duration-200 ${
-              activeTab === tab.id ? "text-[#90e0ef] scale-110" : "text-gray-500 hover:text-gray-300"
+            className={`flex flex-col items-center gap-0.5 px-1 py-1 rounded-xl transition-all duration-200 min-w-0 ${
+              activeTab === tab.id
+                ? "text-[#90e0ef]"
+                : "text-gray-500 hover:text-gray-300"
             }`}>
-            <span className="text-2xl">{tab.icon}</span>
-            <span className="text-xs">{tab.label}</span>
+            <span className={`text-xl transition-transform duration-200 ${activeTab === tab.id ? "scale-110" : ""}`}>
+              {tab.icon}
+            </span>
+            <span className="text-[10px] leading-none truncate w-full text-center">{tab.label}</span>
           </button>
         ))}
       </nav>

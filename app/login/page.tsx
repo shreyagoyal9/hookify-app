@@ -57,15 +57,16 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0b1623] flex flex-col items-center justify-center">
+    <main className="min-h-screen bg-[#0b1623] flex flex-col items-center justify-center px-4">
 
       {/* Hookify brand name */}
-      <h1 className="text-5xl mb-8 text-[#90e0ef]" style={{ fontFamily: "cursive" }}>
+      <h1 className="text-5xl mb-2 text-[#90e0ef]" style={{ fontFamily: "cursive" }}>
         Hookify
       </h1>
+      <p className="text-gray-500 text-sm mb-8 text-center">just the hook. 15 seconds. the best part.</p>
 
       {/* Auth card */}
-      <div className="bg-[#0e2a3b] rounded-3xl p-10 flex flex-col items-center w-[420px] shadow-lg hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(144,224,239,0.4)] transition-all duration-300">
+      <div className="bg-[#0e2a3b] rounded-3xl p-8 flex flex-col items-center w-full max-w-[420px] shadow-lg hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(144,224,239,0.4)] transition-all duration-300">
 
         {/* Elephant logo */}
         <Image

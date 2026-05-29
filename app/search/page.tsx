@@ -286,22 +286,32 @@ export default function SearchPage() {
               }}
               className="fixed inset-0 z-50 bg-[#0a0e1a] flex flex-col"
             >
-              <div className="flex items-center justify-between px-6 py-4">
-                <button onClick={closeCard} className="text-gray-400 hover:text-white text-sm">← back to results</button>
-                <span className="text-xs text-gray-600">🤖 AI detected hook</span>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <button onClick={closeCard}
+                  className="flex items-center gap-2 text-gray-300 hover:text-white text-sm font-medium transition-colors">
+                  ← back
+                </button>
+                <div className="flex items-center gap-2">
+                  {selectedTrack.aiDetecting
+                    ? <span className="text-yellow-400 text-xs animate-pulse">🤖 finding hook...</span>
+                    : <span className="text-xs text-[#90e0ef] bg-[#90e0ef]/10 px-3 py-1 rounded-full">🤖 {selectedTrack.hookStart}s – {selectedTrack.hookEnd}s</span>
+                  }
+                </div>
               </div>
-              <div className={`flex-1 flex flex-col items-center justify-center px-6 bg-gradient-to-b ${selectedTrack.gradient}`}>
-                <div className="flex justify-center mb-6">
+
+              {/* Card body */}
+              <div className={`flex-1 flex flex-col items-center justify-center px-6 py-4 bg-gradient-to-b ${selectedTrack.gradient} overflow-y-auto`}>
+                {/* Vinyl */}
+                <div className="flex justify-center mb-5">
                   <div className="relative">
-                    <div className={`w-72 h-72 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${isPlaying ? "animate-spin" : ""}`}
+                    <div className={`w-52 h-52 sm:w-60 sm:h-60 rounded-full border-2 border-[#90e0ef]/30 flex items-center justify-center ${isPlaying ? "animate-spin" : ""}`}
                       style={{ animationDuration: "4s" }}>
-                      <div className="w-64 h-64 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
+                      <div className="w-44 h-44 sm:w-52 sm:h-52 rounded-full border border-white/10 flex items-center justify-center overflow-hidden"
                         style={{ background: "radial-gradient(circle, #1a1a2e 30%, #0d0d1a 60%, #1a1a2e 80%)" }}>
-                        <div className="w-52 h-52 rounded-full border border-white/5 flex items-center justify-center">
-                          <div className="w-40 h-40 rounded-full border border-white/5 flex items-center justify-center">
-                            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
-                              <img src={selectedTrack.albumArt} alt={selectedTrack.album} className="w-full h-full object-cover" />
-                            </div>
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-white/5 flex items-center justify-center">
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-[#90e0ef]/50 shadow-[0_0_20px_rgba(144,224,239,0.3)]">
+                            <img src={selectedTrack.albumArt} alt={selectedTrack.album} className="w-full h-full object-cover" />
                           </div>
                         </div>
                       </div>
@@ -309,93 +319,118 @@ export default function SearchPage() {
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#0a0e1a] border border-white/20" />
                   </div>
                 </div>
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-medium mb-1">{selectedTrack.title}</h2>
-                  <p className="text-[#90e0ef] text-base mb-0.5">{selectedTrack.artist}</p>
-                  <p className="text-gray-500 text-sm">{selectedTrack.album}</p>
+
+                {/* Song info */}
+                <div className="text-center mb-5 w-full px-2">
+                  <h2 className="text-xl sm:text-2xl font-medium mb-1 truncate">{selectedTrack.title}</h2>
+                  <p className="text-[#90e0ef] text-sm sm:text-base mb-0.5 truncate">{selectedTrack.artist}</p>
+                  <p className="text-gray-500 text-xs sm:text-sm truncate">{selectedTrack.album}</p>
                 </div>
-                <div className="mb-6">
-                  {selectedTrack.aiDetecting
-                    ? <span className="text-yellow-400 text-xs animate-pulse">🤖 detecting hook...</span>
-                    : <span className="text-xs text-[#90e0ef] bg-[#90e0ef]/10 px-3 py-1 rounded-full">🤖 hook: {selectedTrack.hookStart}s – {selectedTrack.hookEnd}s</span>
-                  }
-                </div>
-                <div className="flex justify-center mb-6">
+
+                {/* Play button */}
+                <div className="flex justify-center mb-4">
                   <button onClick={() => togglePlay(selectedTrack)}
-                    className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all duration-300 ${
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-2xl sm:text-3xl transition-all duration-300 ${
                       isPlaying ? "bg-[#90e0ef] text-[#0a0e1a] scale-110 shadow-[0_0_30px_rgba(144,224,239,0.6)]" : "bg-white/10 text-white hover:bg-[#90e0ef]/20 border border-white/20"
                     }`}>
                     {isPlaying ? "⏸" : "▶"}
                   </button>
                 </div>
+
+                {/* Loop toggle */}
                 <button onClick={() => setIsLooping((p) => { isLoopingRef.current = !p; return !p; })}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all mb-6 ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all mb-5 ${
                     isLooping ? "bg-[#90e0ef] text-[#0a0e1a] font-bold" : "bg-white/10 text-gray-400 hover:bg-white/20"
                   }`}>
-                  🔁 {isLooping ? "looping on" : "loop off"}
+                  🔁 {isLooping ? "loop on" : "loop off"}
                 </button>
+
+                {/* Action buttons */}
                 <div className="flex justify-around items-center w-full max-w-xs">
-                  <button onClick={() => handleSave(selectedTrack)} className="flex flex-col items-center gap-1">
-                    <span className="text-2xl hover:scale-125 transition-transform">{savedTracks.has(selectedTrack.id) ? "❤️" : "🤍"}</span>
-                    <span className="text-xs text-gray-500">save</span>
+                  <button onClick={() => handleSave(selectedTrack)} className="flex flex-col items-center gap-1 group">
+                    <span className="text-2xl group-hover:scale-125 transition-transform">{savedTracks.has(selectedTrack.id) ? "❤️" : "🤍"}</span>
+                    <span className="text-xs text-gray-500">{savedTracks.has(selectedTrack.id) ? "saved" : "save"}</span>
                   </button>
-                  <button onClick={() => handleShare(selectedTrack)} className="flex flex-col items-center gap-1">
-                    <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">📤</span>
+                  <button onClick={() => handleShare(selectedTrack)} className="flex flex-col items-center gap-1 group">
+                    <span className="text-2xl text-gray-400 group-hover:scale-125 transition-transform">📤</span>
                     <span className="text-xs text-gray-500">share</span>
                   </button>
-                  <button onClick={() => setShowPlaylistModal(true)} className="flex flex-col items-center gap-1">
-                    <span className="text-2xl text-gray-400 hover:scale-125 transition-transform">➕</span>
+                  <button onClick={() => setShowPlaylistModal(true)} className="flex flex-col items-center gap-1 group">
+                    <span className="text-2xl text-gray-400 group-hover:scale-125 transition-transform">➕</span>
                     <span className="text-xs text-gray-500">playlist</span>
                   </button>
                 </div>
-                {playlistMessage && <p className="text-green-400 text-sm text-center mt-4 animate-pulse">{playlistMessage}</p>}
-                <div className="mt-6 text-center">
-                  <p className="text-gray-600 text-xs">↓ swipe down for previous · ↑ swipe up for next</p>
-                </div>
+
+                {/* Feedback toast */}
+                {playlistMessage && (
+                  <p className="text-green-400 text-sm text-center mt-4 animate-pulse">{playlistMessage}</p>
+                )}
+
+                {/* Swipe hint */}
+                <p className="text-gray-600 text-xs mt-5 text-center">↑ swipe up for next · ↓ swipe down for previous</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="px-6 pt-5 pb-4 border-b border-white/10">
+        <div className="px-5 pt-5 pb-4 border-b border-white/10">
           <div className="flex items-center justify-between mb-4">
             <a href="/home">
               <h1 className="text-2xl text-[#90e0ef] cursor-pointer hover:opacity-80" style={{ fontFamily: "cursive" }}>Hookify</h1>
             </a>
-            <a href="/home" className="text-gray-400 text-sm hover:text-white">← back</a>
+            <a href="/home"
+              className="flex items-center gap-1 text-gray-400 text-sm hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full">
+              ← home
+            </a>
           </div>
           <div className="max-w-2xl mx-auto w-full">
             <div className="flex gap-2">
               <input type="text" placeholder="search any song or artist..."
                 value={query} onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="flex-1 px-5 py-3 rounded-full bg-[#131929] border border-[#90e0ef]/20 text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] text-sm"
+                autoFocus
+                className="flex-1 px-5 py-3 rounded-full bg-[#131929] border border-[#90e0ef]/20 text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] text-sm transition-colors"
               />
               <button onClick={handleSearch} disabled={loading}
-                className="px-5 py-3 rounded-full bg-[#90e0ef] text-[#0a0e1a] font-bold text-sm hover:opacity-90 disabled:opacity-50">
-                {loading ? "..." : "search"}
+                className="px-5 py-3 rounded-full bg-[#90e0ef] text-[#0a0e1a] font-bold text-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50">
+                {loading ? "⏳" : "search"}
               </button>
             </div>
-            {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+            {error && <p className="text-red-400 text-xs mt-2 px-2">{error}</p>}
           </div>
         </div>
 
-        <div className="flex-1 px-6 max-w-2xl mx-auto w-full">
+        <div className="flex-1 px-6 max-w-2xl mx-auto w-full pb-8">
+          {/* Loading state */}
           {loading && (
-            <div className="text-center py-8">
-              <Image src="/Elephant_Beats.jpeg" alt="Loading" width={50} height={50}
-                className="rounded-full border-2 border-[#90e0ef] animate-bounce mx-auto mb-3" />
-              <p className="text-[#90e0ef] text-sm animate-pulse">searching...</p>
+            <div className="text-center py-12">
+              <Image src="/Elephant_Beats.jpeg" alt="Loading" width={60} height={60}
+                className="rounded-full border-2 border-[#90e0ef] animate-bounce mx-auto mb-4" />
+              <p className="text-[#90e0ef] text-sm animate-pulse">searching for hooks...</p>
             </div>
           )}
+
+          {/* Empty / welcome state */}
+          {!loading && results.length === 0 && !error && (
+            <div className="text-center py-16">
+              <p className="text-5xl mb-4">🎵</p>
+              <p className="text-gray-300 text-base font-medium mb-2">search any song</p>
+              <p className="text-gray-500 text-sm">type a song name or artist and hit search</p>
+              <p className="text-gray-600 text-xs mt-2">AI will find the hook in seconds 🤖</p>
+            </div>
+          )}
+
           <AnimatePresence>
             {results.length > 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3">
-                <p className="text-gray-500 text-xs mb-1">{results.length} results — tap to open full card</p>
-                {results.map((track) => (
-                  <motion.div key={track.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3 pt-4">
+                <p className="text-gray-500 text-xs mb-1">{results.length} results — tap any to play the hook</p>
+                {results.map((track, idx) => (
+                  <motion.div key={track.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
                     onClick={() => openCard(track)}
-                    className={`bg-gradient-to-r ${track.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-3 cursor-pointer hover:border-[#90e0ef]/40 transition-all active:scale-95`}>
+                    className={`bg-gradient-to-r ${track.gradient} rounded-2xl p-4 border border-white/10 flex items-center gap-3 cursor-pointer hover:border-[#90e0ef]/50 hover:shadow-[0_0_12px_rgba(144,224,239,0.15)] transition-all active:scale-[0.98]`}>
                     <img src={track.albumArt} alt={track.album} className="w-12 h-12 rounded-full object-cover border-2 border-white/20 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{track.title}</p>
