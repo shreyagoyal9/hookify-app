@@ -50,6 +50,10 @@ export default function HomePage() {
   const [playlistModeIndex, setPlaylistModeIndex]     = useState(0);
   const [playingPlaylistTrackId, setPlayingPlaylistTrackId] = useState<string | null>(null);
   const [playlistMenuId, setPlaylistMenuId] = useState<string | null>(null);
+  const [showAddToPlaylistSearch, setShowAddToPlaylistSearch] = useState(false);
+  const [addSearchQuery, setAddSearchQuery]   = useState("");
+  const [addSearchResults, setAddSearchResults] = useState<any[]>([]);
+  const [addSearchLoading, setAddSearchLoading] = useState(false);
 
   // ── Fetch songs from iTunes ────────────────────────────────────
   useEffect(() => {
@@ -370,6 +374,69 @@ export default function HomePage() {
       setPlaylistMessage("");
       setShowPlaylistModal(false);
     }, 1500);
+  };
+
+  // ── Remove a track from the open playlist ─────────────────────
+  const removeFromPlaylist = async (trackRowId: string) => {
+    await supabase.from("playlist_tracks").delete().eq("id", trackRowId);
+    setPlaylistTracks((prev) => prev.filter((t) => t.id !== trackRowId));
+  };
+
+  // ── Search & add a song directly into the open playlist ────────
+  const handleAddSearch = async () => {
+    if (!addSearchQuery.trim() || !openPlaylist) return;
+    setAddSearchLoading(true);
+    setAddSearchResults([]);
+    try {
+      const res  = await fetch(`/api/search?q=${encodeURIComponent(addSearchQuery)}`);
+      const data = await res.json();
+      const tracks = (data.results ?? [])
+        .filter((t: any) => t.previewUrl)
+        .slice(0, 6)
+        .map((t: any, i: number) => ({
+          trackId:     t.trackId,
+          title:       t.trackName      ?? "Unknown Title",
+          artist:      t.artistName     ?? "Unknown Artist",
+          album:       t.collectionName ?? t.trackName ?? "Single",
+          albumArt:    t.artworkUrl100?.replace("100x100", "400x400") ?? "",
+          previewUrl:  t.previewUrl,
+          hookStart:   5,
+          hookEnd:     20,
+          gradient:    ["from-[#1a0533] via-[#2d1b69] to-[#0d1b2a]",
+                        "from-[#0d2137] via-[#1a3a4a] to-[#0a1628]"][i % 2],
+        }));
+      setAddSearchResults(tracks);
+    } catch { /* ignore */ }
+    setAddSearchLoading(false);
+  };
+
+  const addSearchTrackToPlaylist = async (track: any) => {
+    if (!openPlaylist || !userId) return;
+    // Duplicate check
+    const { data: existing } = await supabase
+      .from("playlist_tracks").select("id")
+      .eq("playlist_id", openPlaylist.id)
+      .eq("track_id", Number(track.trackId))
+      .maybeSingle();
+    if (existing) { setPlaylistMessage("Already in playlist! 🎵"); setTimeout(() => setPlaylistMessage(""), 1500); return; }
+    const { data: newRow, error } = await supabase.from("playlist_tracks").insert({
+      playlist_id: openPlaylist.id,
+      user_id:     userId,
+      track_id:    Number(track.trackId),
+      title:       track.title,
+      artist:      track.artist,
+      album:       track.album,
+      album_art:   track.albumArt,
+      preview_url: track.previewUrl,
+      hook_start:  track.hookStart,
+      hook_end:    track.hookEnd,
+      gradient:    track.gradient,
+    }).select().single();
+    if (!error && newRow) {
+      setPlaylistTracks((prev) => [...prev, newRow]);
+      setPlaylistMessage(`"${track.title}" added! ✅`);
+      setTimeout(() => setPlaylistMessage(""), 1500);
+    }
   };
 
   // ── Delete playlist ────────────────────────────────────────────
@@ -823,9 +890,14 @@ const openPlaylistDetail = (playlist: Playlist) => {
             {openPlaylist ? (
               <>
                 <div className="flex items-center gap-3 mb-6">
-                  <button onClick={() => setOpenPlaylist(null)}
+                  <button onClick={() => { setOpenPlaylist(null); setShowAddToPlaylistSearch(false); setAddSearchResults([]); setAddSearchQuery(""); }}
                     className="text-gray-400 hover:text-white text-sm">← back</button>
-                  <h2 className="text-xl font-medium text-[#90e0ef] flex-1">{openPlaylist.name}</h2>
+                  <h2 className="text-xl font-medium text-[#90e0ef] flex-1 truncate">{openPlaylist.name}</h2>
+                  <button
+                    onClick={() => { setShowAddToPlaylistSearch(true); setAddSearchResults([]); setAddSearchQuery(""); }}
+                    className="px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white text-xs font-bold hover:bg-white/20 transition-all flex-shrink-0">
+                    + add
+                  </button>
                   {playlistTracks.length > 0 && (
                     <button
                       onClick={() => {
@@ -838,13 +910,60 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     </button>
                   )}
                 </div>
+
+                {/* ── Add song search modal ── */}
+                {showAddToPlaylistSearch && (
+                  <div className="mb-5 bg-[#0e2a3b] rounded-2xl p-4 border border-[#90e0ef]/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-sm text-[#90e0ef] font-medium flex-1">search songs to add</p>
+                      <button onClick={() => { setShowAddToPlaylistSearch(false); setAddSearchResults([]); setAddSearchQuery(""); }}
+                        className="text-gray-500 hover:text-white text-lg leading-none">×</button>
+                    </div>
+                    <div className="flex gap-2 mb-3">
+                      <input
+                        value={addSearchQuery}
+                        onChange={(e) => setAddSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddSearch()}
+                        placeholder="song name or artist..."
+                        className="flex-1 px-3 py-2 rounded-full bg-[#0a0e1a] border border-white/10 text-white text-sm placeholder-gray-500 outline-none focus:border-[#90e0ef] transition-colors"
+                        autoFocus
+                      />
+                      <button onClick={handleAddSearch}
+                        className="px-4 py-2 rounded-full bg-[#90e0ef] text-[#0a0e1a] text-sm font-bold hover:opacity-90 transition-all">
+                        {addSearchLoading ? "..." : "search"}
+                      </button>
+                    </div>
+                    {playlistMessage && (
+                      <p className="text-xs text-center text-[#90e0ef] mb-2">{playlistMessage}</p>
+                    )}
+                    {addSearchResults.length > 0 && (
+                      <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                        {addSearchResults.map((track) => (
+                          <div key={track.trackId} className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2">
+                            <img src={track.albumArt} alt={track.title}
+                              className="w-10 h-10 rounded-full object-cover flex-shrink-0 border border-white/10" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{track.title}</p>
+                              <p className="text-xs text-gray-400 truncate">{track.artist}</p>
+                            </div>
+                            <button
+                              onClick={() => addSearchTrackToPlaylist(track)}
+                              className="px-3 py-1 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 text-[#90e0ef] text-xs font-bold hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all flex-shrink-0">
+                              + add
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {loadingTracks ? (
                   <p className="text-gray-400 text-sm text-center animate-pulse">loading...</p>
                 ) : playlistTracks.length === 0 ? (
                   <div className="text-center py-20">
                     <p className="text-6xl mb-4">🎵</p>
                     <p className="text-gray-400 text-sm">no songs in this playlist yet!</p>
-                    <p className="text-gray-600 text-xs mt-1">tap ➕ on any hook to add songs</p>
+                    <p className="text-gray-600 text-xs mt-1">tap "+ add" above or ➕ on any hook</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -860,32 +979,39 @@ const openPlaylistDetail = (playlist: Playlist) => {
                             {track.hook_start}s–{track.hook_end}s
                           </span>
                         </div>
-                        <button
-                          onClick={() => {
-                            if (playingPlaylistTrackId === track.id) {
-                              audioRef.current?.pause();
-                              setPlayingPlaylistTrackId(null);
-                              setIsVibing(false);
-                              return;
-                            }
-                            audioRef.current?.pause();
-                            const newAudio = new Audio(track.preview_url);
-                            newAudio.currentTime = track.hook_start;
-                            newAudio.ontimeupdate = () => {
-                              if (newAudio.currentTime >= track.hook_end) {
-                                newAudio.pause();
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => {
+                              if (playingPlaylistTrackId === track.id) {
+                                audioRef.current?.pause();
                                 setPlayingPlaylistTrackId(null);
                                 setIsVibing(false);
+                                return;
                               }
-                            };
-                            newAudio.play().catch(() => {});
-                            audioRef.current = newAudio;
-                            setPlayingPlaylistTrackId(track.id);
-                            setIsVibing(true);
-                          }}
-                          className="w-10 h-10 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 flex items-center justify-center text-[#90e0ef] hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all flex-shrink-0">
-                          {playingPlaylistTrackId === track.id ? "⏸" : "▶"}
-                        </button>
+                              audioRef.current?.pause();
+                              const newAudio = new Audio(track.preview_url);
+                              newAudio.currentTime = track.hook_start;
+                              newAudio.ontimeupdate = () => {
+                                if (newAudio.currentTime >= track.hook_end) {
+                                  newAudio.pause();
+                                  setPlayingPlaylistTrackId(null);
+                                  setIsVibing(false);
+                                }
+                              };
+                              newAudio.play().catch(() => {});
+                              audioRef.current = newAudio;
+                              setPlayingPlaylistTrackId(track.id);
+                              setIsVibing(true);
+                            }}
+                            className="w-9 h-9 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 flex items-center justify-center text-[#90e0ef] hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all text-sm">
+                            {playingPlaylistTrackId === track.id ? "⏸" : "▶"}
+                          </button>
+                          <button
+                            onClick={() => removeFromPlaylist(track.id)}
+                            className="w-9 h-9 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm">
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
