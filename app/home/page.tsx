@@ -340,14 +340,18 @@ export default function HomePage() {
       hook_start: currentHook.hookStart, hook_end: currentHook.hookEnd,
       gradient: currentHook.gradient,
     });
-    if (!error) {
-      setPlaylistCounts((prev) => ({ ...prev, [playlistId]: (prev[playlistId] ?? 0) + 1 }));
-      setPlaylistMessage(`Added to "${playlistName}"! ✅`);
-      setTimeout(() => {
-        setPlaylistMessage("");
-        setShowPlaylistModal(false);
-      }, 1500);
+    if (error) {
+      console.error("addToPlaylist error:", error);
+      setPlaylistMessage(`Couldn't add: ${error.message}`);
+      setTimeout(() => setPlaylistMessage(""), 3000);
+      return;
     }
+    setPlaylistCounts((prev) => ({ ...prev, [playlistId]: (prev[playlistId] ?? 0) + 1 }));
+    setPlaylistMessage(`Added to "${playlistName}"! ✅`);
+    setTimeout(() => {
+      setPlaylistMessage("");
+      setShowPlaylistModal(false);
+    }, 1500);
   };
 
   // ── Delete playlist ────────────────────────────────────────────
@@ -385,7 +389,8 @@ const openPlaylistDetail = (playlist: Playlist) => {
     .select("*")
     .eq("playlist_id", playlist.id)
     .order("created_at", { ascending: true })
-    .then(({ data }) => {
+    .then(({ data, error }) => {
+      if (error) console.error("openPlaylistDetail error:", error);
       setPlaylistTracks(data ?? []);
       setLoadingTracks(false);
     });
