@@ -73,10 +73,13 @@ export default function SearchPage() {
         .filter((t: any) => t.previewUrl)
         .slice(0, 8)
         .map((track: any, i: number) => ({
-          id: track.trackId, title: track.trackName, artist: track.artistName,
-          album: track.collectionName,
-          albumArt: track.artworkUrl100?.replace("100x100", "400x400") ?? "",
-          previewUrl: track.previewUrl, hookStart: 5, hookEnd: 20,
+          id:         track.trackId,
+          title:      track.trackName      ?? "Unknown Title",
+          artist:     track.artistName     ?? "Unknown Artist",
+          album:      track.collectionName ?? track.trackName ?? "Single",
+          albumArt:   track.artworkUrl100?.replace("100x100", "400x400") ?? "",
+          previewUrl: track.previewUrl,
+          hookStart: 5, hookEnd: 20,
           gradient: GRADIENTS[i % GRADIENTS.length], liked: false, aiDetecting: true,
         }));
       setResults(initialTracks);
@@ -107,7 +110,12 @@ export default function SearchPage() {
 
   const togglePlay = async (track: SearchTrack) => {
     if (!track.previewUrl) return;
-    if (isPlaying && audio) { audio.pause(); setIsPlaying(false); return; }
+    // If the same track is already playing, pause it
+    if (audio && audio.src === track.previewUrl && isPlaying) {
+      audio.pause(); setIsPlaying(false); return;
+    }
+    // Stop any currently playing audio before starting the new track
+    if (audio) { audio.pause(); }
     const newAudio = new Audio(track.previewUrl);
     newAudio.currentTime = track.hookStart;
     newAudio.ontimeupdate = () => {
@@ -193,13 +201,17 @@ export default function SearchPage() {
       activeUserId = session?.user?.id ?? null;
       if (activeUserId) setUserId(activeUserId);
     }
-    if (!activeUserId || !selectedTrack) return;
-    // Check for duplicate
+    if (!activeUserId || !selectedTrack) {
+      setPlaylistMessage("Not logged in — please reload 😕");
+      setTimeout(() => setPlaylistMessage(""), 2500);
+      return;
+    }
+    // Duplicate check (ignore maybeSingle error — just let insert handle it)
     const { data: existing } = await supabase
       .from("playlist_tracks")
       .select("id")
       .eq("playlist_id", playlistId)
-      .eq("track_id", selectedTrack.id)
+      .eq("track_id", Number(selectedTrack.id))
       .maybeSingle();
     if (existing) {
       setPlaylistMessage(`Already in "${playlistName}"! 🎵`);
@@ -207,15 +219,28 @@ export default function SearchPage() {
       return;
     }
     const { error } = await supabase.from("playlist_tracks").insert({
-      playlist_id: playlistId, user_id: activeUserId, track_id: selectedTrack.id,
-      title: selectedTrack.title, artist: selectedTrack.artist, album: selectedTrack.album,
-      album_art: selectedTrack.albumArt, preview_url: selectedTrack.previewUrl,
-      hook_start: selectedTrack.hookStart, hook_end: selectedTrack.hookEnd,
-      gradient: selectedTrack.gradient,
+      playlist_id:  playlistId,
+      user_id:      activeUserId,
+      track_id:     Number(selectedTrack.id),
+      title:        selectedTrack.title        ?? "",
+      artist:       selectedTrack.artist       ?? "",
+      album:        selectedTrack.album        ?? "Single",
+      album_art:    selectedTrack.albumArt     ?? "",
+      preview_url:  selectedTrack.previewUrl   ?? "",
+      hook_start:   selectedTrack.hookStart,
+      hook_end:     selectedTrack.hookEnd,
+      gradient:     selectedTrack.gradient     ?? "",
     });
     if (!error) {
+      setPlaylists((prev) => prev.map((p) =>
+        p.id === playlistId ? { ...p } : p
+      ));
       setPlaylistMessage(`Added to "${playlistName}"! ✅`);
       window.setTimeout(() => { setPlaylistMessage(""); setShowPlaylistModal(false); }, 1500);
+    } else {
+      console.error("addToPlaylist error:", error);
+      setPlaylistMessage(`Couldn't add: ${error.message}`);
+      window.setTimeout(() => setPlaylistMessage(""), 3000);
     }
   };
 

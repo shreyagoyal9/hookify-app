@@ -38,6 +38,7 @@ export default function HomePage() {
   const [savedHooksFull, setSavedHooksFull]   = useState<any[]>([]);
   const [totalPlays, setTotalPlays]           = useState<number>(0);
   const [savedAudio, setSavedAudio]           = useState<HTMLAudioElement | null>(null);
+  const [savedPlayingUrl, setSavedPlayingUrl] = useState<string | null>(null);
   const [shareToast, setShareToast]           = useState("");
   const [playlistCounts, setPlaylistCounts]   = useState<Record<string, number>>({});
 
@@ -320,13 +321,24 @@ export default function HomePage() {
 
   // ── Add current hook to a playlist ────────────────────────────
   const addToPlaylist = async (playlistId: string, playlistName: string) => {
-    if (!userId || !currentHook) return;
-    // Check for duplicate
+    // Re-fetch session if userId not yet loaded (race condition on mount)
+    let activeUserId = userId;
+    if (!activeUserId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      activeUserId = session?.user?.id ?? null;
+      if (activeUserId) setUserId(activeUserId);
+    }
+    if (!activeUserId || !currentHook) {
+      setPlaylistMessage("Not logged in — please reload 😕");
+      setTimeout(() => setPlaylistMessage(""), 2500);
+      return;
+    }
+    // Duplicate check
     const { data: existing } = await supabase
       .from("playlist_tracks")
       .select("id")
       .eq("playlist_id", playlistId)
-      .eq("track_id", currentHook.id)
+      .eq("track_id", Number(currentHook.id))
       .maybeSingle();
     if (existing) {
       setPlaylistMessage(`Already in "${playlistName}"! 🎵`);
@@ -334,11 +346,17 @@ export default function HomePage() {
       return;
     }
     const { error } = await supabase.from("playlist_tracks").insert({
-      playlist_id: playlistId, user_id: userId, track_id: currentHook.id,
-      title: currentHook.title, artist: currentHook.artist, album: currentHook.album,
-      album_art: currentHook.albumArt, preview_url: currentHook.previewUrl,
-      hook_start: currentHook.hookStart, hook_end: currentHook.hookEnd,
-      gradient: currentHook.gradient,
+      playlist_id:  playlistId,
+      user_id:      activeUserId,
+      track_id:     Number(currentHook.id),
+      title:        currentHook.title      ?? "",
+      artist:       currentHook.artist     ?? "",
+      album:        currentHook.album      ?? "Single",
+      album_art:    currentHook.albumArt   ?? "",
+      preview_url:  currentHook.previewUrl ?? "",
+      hook_start:   currentHook.hookStart,
+      hook_end:     currentHook.hookEnd,
+      gradient:     currentHook.gradient   ?? "",
     });
     if (error) {
       console.error("addToPlaylist error:", error);
@@ -726,15 +744,24 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => {
+                          // Toggle: pause if this track is already playing
+                          if (savedPlayingUrl === hook.preview_url && savedAudio && !savedAudio.paused) {
+                            savedAudio.pause();
+                            setSavedPlayingUrl(null);
+                            return;
+                          }
+                          // Stop any other playing track first
                           savedAudio?.pause();
                           const a = new Audio(hook.preview_url);
                           a.currentTime = hook.hook_start;
-                          a.ontimeupdate = () => { if (a.currentTime >= hook.hook_end) { a.pause(); a.currentTime = hook.hook_start; } };
+                          a.ontimeupdate = () => { if (a.currentTime >= hook.hook_end) { a.pause(); a.currentTime = hook.hook_start; setSavedPlayingUrl(null); } };
+                          a.onended = () => setSavedPlayingUrl(null);
                           a.play();
                           setSavedAudio(a);
+                          setSavedPlayingUrl(hook.preview_url);
                         }}
                         className="w-9 h-9 rounded-full bg-[#90e0ef]/20 border border-[#90e0ef]/40 flex items-center justify-center text-[#90e0ef] hover:bg-[#90e0ef] hover:text-[#0a0e1a] transition-all text-sm">
-                        ▶
+                        {savedPlayingUrl === hook.preview_url && savedAudio && !savedAudio.paused ? "⏸" : "▶"}
                       </button>
                       <button
                         onClick={async () => {

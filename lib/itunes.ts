@@ -57,18 +57,15 @@ async function detectHookWithAI(
     });
 
     const result = await aiResponse.json();
-    console.log("AI response:", result);
 
     if (result.success) {
-      console.log(`🤖 AI hook: ${result.hook_start}s → ${result.hook_end}s (confidence: ${result.confidence})`);
       return {
         hookStart: result.hook_start,
         hookEnd:   result.hook_end,
       };
     }
     return null;
-  } catch (error) {
-    console.log("⚠️ AI unavailable, using manual timestamps");
+  } catch {
     return null;
   }
 }
@@ -98,25 +95,21 @@ export async function searchTrack(
     if (aiResult) {
       hookStart = aiResult.hookStart;
       hookEnd   = aiResult.hookEnd;
-      console.log(`✅ AI timestamps used for "${query}"`);
-    } else {
-      console.log(`📝 Manual timestamps used for "${query}"`);
     }
 
     return {
       id:         track.trackId,
-      title:      track.trackName,
-      artist:     track.artistName,
-      album:      track.collectionName,
-      albumArt:   track.artworkUrl100.replace("100x100", "400x400"),
+      title:      track.trackName      ?? "Unknown Title",
+      artist:     track.artistName     ?? "Unknown Artist",
+      album:      track.collectionName ?? track.trackName ?? "Single",
+      albumArt:   track.artworkUrl100?.replace("100x100", "400x400") ?? "",
       previewUrl: track.previewUrl,
       hookStart,
       hookEnd,
       gradient:   GRADIENTS[index % GRADIENTS.length],
       liked:      false,
     };
-  } catch (error) {
-    console.log("⚠️ AI error:", error);
+  } catch {
     return null;
   }
 }
