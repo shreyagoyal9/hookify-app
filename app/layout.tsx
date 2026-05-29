@@ -1,6 +1,18 @@
+// ─────────────────────────────────────────────────────────────────────────────
 // app/layout.tsx
-// ROOT LAYOUT — wraps every single page in the app
-// Think of it like the picture frame around all your pages
+// Root layout — applied to every page in the app.
+//
+// Responsibilities:
+//   1. Set page metadata: title, description, favicon
+//   2. Lock mobile viewport so users can't pinch-zoom
+//   3. Apply global dark background and `h-dvh` (dynamic viewport height)
+//      so the app fills the screen on iOS Safari correctly
+//
+// Notes:
+//   - `metadata` and `viewport` must be separate exports in Next.js 14+
+//   - `overflow-hidden` on body prevents page-level scroll (mobile feeds scroll internally)
+//   - `h-dvh` accounts for iOS Safari's collapsible address bar
+// ─────────────────────────────────────────────────────────────────────────────
 
 import type { Metadata, Viewport } from "next";
 import "./globals.css";

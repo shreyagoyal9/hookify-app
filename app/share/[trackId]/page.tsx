@@ -1,6 +1,15 @@
+// ─────────────────────────────────────────────────────────────────────────────
 // app/share/[trackId]/page.tsx
-// Public shareable hook card — no login required
-// URL: /share/[trackId]?title=...&artist=...&art=...&start=...&end=...
+// Public shareable hook card — no login required.
+//
+// URL:  /share/[trackId]?title=...&artist=...&art=...&url=...&start=...&end=...
+//
+// All track data is encoded in URL search params so the page works without
+// any database lookup. The `trackId` segment exists for semantic URLs only.
+//
+// ShareContent is wrapped in <Suspense> because useSearchParams() requires
+// a Suspense boundary in Next.js App Router (throws without it).
+// ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
 
@@ -20,6 +29,8 @@ function ShareContent({ params }: { params: { trackId: string } }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // ── Play / pause hook audio ────────────────────────────────────
+  // Seeks to hookStart on play; stops automatically at hookEnd
   const togglePlay = () => {
     if (!previewUrl) return;
     if (isPlaying && audioRef.current) {

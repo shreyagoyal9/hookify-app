@@ -1,6 +1,21 @@
+// ─────────────────────────────────────────────────────────────────────────────
 // app/admin/page.tsx
-// Admin analytics dashboard — see all users and their activity
-// Visit: /admin to see all stats
+// Private analytics dashboard — overview of all users and activity.
+//
+// Access:  /admin
+// Auth:    password-protected via /api/admin-auth + sessionStorage flag
+//          (session persists for the browser tab so you don't re-enter every time)
+//
+// Tabs:
+//   overview  — top 5 most played songs
+//   users     — all registered users with per-user stats from `user_stats` view
+//   recent    — last 10 hook plays across all users
+//
+// Notes:
+//   - Body overflow is unlocked on mount so the page can scroll freely
+//     (the main app locks overflow for the mobile swipe feed)
+//   - Stats are fetched from Supabase directly; no server cache
+// ─────────────────────────────────────────────────────────────────────────────
 
 "use client";
 
@@ -52,6 +67,7 @@ export default function AdminPage() {
     setCheckingSession(false);
   }, []);
 
+  // ── Verify admin password via API ─────────────────────────────
   const handleLogin = async () => {
     try {
       const res = await fetch("/api/admin-auth", {
@@ -72,6 +88,7 @@ export default function AdminPage() {
     }
   };
 
+  // ── Fetch all analytics data from Supabase ────────────────────
   useEffect(() => {
     async function fetchStats() {
       setLoading(true);

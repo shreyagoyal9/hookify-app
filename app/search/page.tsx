@@ -1,3 +1,27 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// app/search/page.tsx
+// Search page — find any song and play its AI-detected hook.
+//
+// Flow:
+//   1. User types a query → GET /api/search?q=... → raw iTunes results
+//   2. Results appear immediately with fallback hook timestamps (5–20s)
+//   3. AI detection runs in background per track → updates timestamps live
+//   4. Tap a result → full-screen swipeable hook card (Framer Motion)
+//   5. Swipe up/down on the card to browse results; swipe down from first to close
+//
+// Features:
+//   - Recent search history (stored in localStorage, last 8 searches)
+//   - Play/pause hook preview with loop toggle
+//   - Save hook to Supabase saved_hooks table
+//   - Add to playlist (with duplicate check)
+//   - Share via native share sheet or clipboard URL
+//   - Playlist modal rendered via createPortal so it floats above the card
+//
+// State notes:
+//   - `isLoopingRef` keeps the loop flag accessible inside audio callbacks
+//   - `mounted` guards createPortal from SSR (portals need the DOM)
+// ─────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -64,6 +88,7 @@ export default function SearchPage() {
     loadUser();
   }, []);
 
+  // ── Save query to recent search history ───────────────────────
   const saveToHistory = (q: string) => {
     const trimmed = q.trim();
     if (!trimmed) return;
@@ -72,6 +97,8 @@ export default function SearchPage() {
     localStorage.setItem("hookify_recent_searches", JSON.stringify(updated));
   };
 
+  // ── Run iTunes search + background AI detection ───────────────
+  // overrideQuery: set when clicking a recent search chip
   const handleSearch = async (overrideQuery?: string) => {
     const q = (overrideQuery ?? query).trim();
     if (!q) return;
@@ -124,8 +151,10 @@ export default function SearchPage() {
     } catch { setError("Something went wrong!"); setLoading(false); }
   };
 
+  // ── Open full-screen hook card ─────────────────────────────────
   const openCard = (track: SearchTrack) => { audio?.pause(); setIsPlaying(false); setSelectedTrack(track); };
 
+  // ── Play / pause hook audio ────────────────────────────────────
   const togglePlay = async (track: SearchTrack) => {
     if (!track.previewUrl) return;
     // If the same track is already playing, pause it
@@ -157,6 +186,7 @@ export default function SearchPage() {
 
   const closeCard = () => { audio?.pause(); setIsPlaying(false); setSelectedTrack(null); };
 
+  // ── Save hook to Supabase ──────────────────────────────────────
   const handleSave = async (track: SearchTrack) => {
     // Fetch session fresh if userId not loaded
     let activeUserId = userId;
@@ -179,6 +209,7 @@ export default function SearchPage() {
     }
   };
 
+  // ── Share hook via native share sheet or clipboard ────────────
   const handleShare = async (track: SearchTrack) => {
     const params = new URLSearchParams({
       title:  track.title,
@@ -199,6 +230,7 @@ export default function SearchPage() {
     }
   };
 
+  // ── Create new playlist ────────────────────────────────────────
   const createPlaylist = async () => {
     let activeUserId = userId;
     if (!activeUserId) {
@@ -221,6 +253,7 @@ export default function SearchPage() {
     window.setTimeout(() => { setPlaylistMessage(""); setShowPlaylistModal(false); }, 1500);
   };
 
+  // ── Add selected track to a playlist ──────────────────────────
   const addToPlaylist = async (playlistId: string, playlistName: string) => {
     let activeUserId = userId;
     if (!activeUserId) {

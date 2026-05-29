@@ -1,37 +1,51 @@
+// ─────────────────────────────────────────────────────────────────────────────
 // app/api/trending/route.ts
-// Fetches real top songs from iTunes RSS feed (no API key needed)
-// Returns a list of search queries ready for iTunes search
+// Returns the real iTunes top 25 chart — no API key, no scraping.
+//
+// Source: iTunes RSS feed (JSON format), updated daily by Apple.
+// URL:    https://itunes.apple.com/us/rss/topsongs/limit=25/json
+//
+// Response shape:
+//   { trending: [{ title, artist, searchQuery, rank }] }
+//
+// searchQuery = "title artist" — passed directly to iTunes Search API
+// to find the track and get its preview URL + metadata.
+//
+// Cached for 1 hour on Vercel edge (revalidate: 3600) to avoid
+// hammering the RSS feed on every page load.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
 
+const ITUNES_RSS = "https://itunes.apple.com/us/rss/topsongs/limit=25/json";
+
 export async function GET() {
   try {
-    // iTunes top 25 songs RSS — free, no key, updated daily
-    const rssUrl =
-      "https://itunes.apple.com/us/rss/topsongs/limit=25/json";
-
-    const response = await fetch(rssUrl, { next: { revalidate: 3600 } });
-    const data = await response.json();
+    // Cache result for 1 hour — chart doesn't change more than once a day
+    const response = await fetch(ITUNES_RSS, { next: { revalidate: 3600 } });
+    const data     = await response.json();
 
     const entries = data?.feed?.entry;
     if (!entries?.length) {
-      return NextResponse.json({ error: "No entries" }, { status: 500 });
+      return NextResponse.json({ error: "No entries in RSS feed" }, { status: 500 });
     }
 
-    const trending = entries.map((entry: any) => {
-      const title  = entry["im:name"]?.label ?? "";
+    // Map each RSS entry to a lean object the frontend can use
+    const trending = entries.map((entry: any, index: number) => {
+      const title  = entry["im:name"]?.label   ?? "";
       const artist = entry["im:artist"]?.label ?? "";
       return {
         title,
         artist,
-        searchQuery: `${title} ${artist}`.trim(),
-        rank: entries.indexOf(entry) + 1,
+        searchQuery: `${title} ${artist}`.trim(), // Used for iTunes track search
+        rank: index + 1,
       };
     });
 
     return NextResponse.json({ trending });
-  } catch (error) {
-    console.error("iTunes RSS error:", error);
+
+  } catch {
+    // If RSS feed is down, home page falls back to the manual TRENDING_SONGS list
     return NextResponse.json({ error: "Failed to fetch trending" }, { status: 500 });
   }
 }
