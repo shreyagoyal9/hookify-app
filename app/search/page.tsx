@@ -35,8 +35,15 @@ export default function SearchPage() {
   const [playlistMessage, setPlaylistMessage]     = useState("");
   const [savedTracks, setSavedTracks]             = useState<Set<number>>(new Set());
   const [mounted, setMounted]                     = useState(false);
+  const [recentSearches, setRecentSearches]       = useState<string[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("hookify_recent_searches");
+    if (stored) setRecentSearches(JSON.parse(stored));
+  }, []);
   useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
 
   useEffect(() => {
@@ -57,16 +64,27 @@ export default function SearchPage() {
     loadUser();
   }, []);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const saveToHistory = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    const updated = [trimmed, ...recentSearches.filter((s) => s !== trimmed)].slice(0, 8);
+    setRecentSearches(updated);
+    localStorage.setItem("hookify_recent_searches", JSON.stringify(updated));
+  };
+
+  const handleSearch = async (overrideQuery?: string) => {
+    const q = (overrideQuery ?? query).trim();
+    if (!q) return;
+    if (overrideQuery) setQuery(overrideQuery);
     setLoading(true);
     setError("");
     setResults([]);
+    saveToHistory(q);
     audio?.pause();
     setIsPlaying(false);
     setSelectedTrack(null);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
       const data = await response.json();
       if (!data.results?.length) { setError("No songs found!"); setLoading(false); return; }
       const initialTracks: SearchTrack[] = data.results
@@ -162,12 +180,21 @@ export default function SearchPage() {
   };
 
   const handleShare = async (track: SearchTrack) => {
-    const text = `🎵 Check out the hook of "${track.title}" by ${track.artist} on Hookify!`;
+    const params = new URLSearchParams({
+      title:  track.title,
+      artist: track.artist,
+      art:    track.albumArt,
+      url:    track.previewUrl,
+      start:  String(track.hookStart),
+      end:    String(track.hookEnd),
+    });
+    const shareUrl = `${window.location.origin}/share/${track.id}?${params.toString()}`;
+    const text = `🎵 "${track.title}" by ${track.artist} — just the hook on Hookify!`;
     if (navigator.share) {
-      await navigator.share({ title: "Hookify", text, url: window.location.href });
+      await navigator.share({ title: "Hookify Hook", text, url: shareUrl });
     } else {
-      await navigator.clipboard.writeText(text);
-      setPlaylistMessage("Link copied! 📤");
+      await navigator.clipboard.writeText(shareUrl);
+      setPlaylistMessage("Hook link copied! 📤");
       setTimeout(() => setPlaylistMessage(""), 1500);
     }
   };
@@ -412,11 +439,11 @@ export default function SearchPage() {
             <div className="flex gap-2">
               <input type="text" placeholder="search any song or artist..."
                 value={query} onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch(undefined)}
                 autoFocus
                 className="flex-1 px-5 py-3 rounded-full bg-[#131929] border border-[#90e0ef]/20 text-white placeholder-gray-500 outline-none focus:border-[#90e0ef] text-sm transition-colors"
               />
-              <button onClick={handleSearch} disabled={loading}
+              <button onClick={() => handleSearch(undefined)} disabled={loading}
                 className="px-5 py-3 rounded-full bg-[#90e0ef] text-[#0a0e1a] font-bold text-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50">
                 {loading ? "⏳" : "search"}
               </button>
@@ -435,13 +462,37 @@ export default function SearchPage() {
             </div>
           )}
 
-          {/* Empty / welcome state */}
+          {/* Empty / welcome state + recent searches */}
           {!loading && results.length === 0 && !error && (
-            <div className="text-center py-16">
-              <p className="text-5xl mb-4">🎵</p>
-              <p className="text-gray-300 text-base font-medium mb-2">search any song</p>
-              <p className="text-gray-500 text-sm">type a song name or artist and hit search</p>
-              <p className="text-gray-600 text-xs mt-2">AI will find the hook in seconds 🤖</p>
+            <div className="pt-4">
+              {recentSearches.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-500">recent searches</p>
+                    <button
+                      onClick={() => { setRecentSearches([]); localStorage.removeItem("hookify_recent_searches"); }}
+                      className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                      clear all
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {recentSearches.map((s) => (
+                      <button key={s}
+                        onClick={() => handleSearch(s)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 hover:border-[#90e0ef]/30 transition-all active:scale-95">
+                        <span className="text-gray-500 text-xs">⏱</span> {s}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-16">
+                  <p className="text-5xl mb-4">🎵</p>
+                  <p className="text-gray-300 text-base font-medium mb-2">search any song</p>
+                  <p className="text-gray-500 text-sm">type a song name or artist and hit search</p>
+                  <p className="text-gray-600 text-xs mt-2">AI will find the hook in seconds 🤖</p>
+                </div>
+              )}
             </div>
           )}
 

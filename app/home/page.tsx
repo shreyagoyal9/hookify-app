@@ -50,6 +50,10 @@ export default function HomePage() {
   const [playlistModeIndex, setPlaylistModeIndex]     = useState(0);
   const [playingPlaylistTrackId, setPlayingPlaylistTrackId] = useState<string | null>(null);
   const [playlistMenuId, setPlaylistMenuId] = useState<string | null>(null);
+  const [trendingList, setTrendingList] = useState<{ title: string; artist: string; rank: number }[]>([]);
+  const [topArtists, setTopArtists]     = useState<{ artist: string; plays: number }[]>([]);
+  const [joinedAt, setJoinedAt]         = useState<string>("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showAddToPlaylistSearch, setShowAddToPlaylistSearch] = useState(false);
   const [addSearchQuery, setAddSearchQuery]   = useState("");
   const [addSearchResults, setAddSearchResults] = useState<any[]>([]);
@@ -62,29 +66,27 @@ export default function HomePage() {
     async function fetchHooks() {
       setLoading(true);
       try {
-        // Try to get real YouTube trending songs first
+        // Fetch real iTunes top charts
         const trendingResponse = await fetch("/api/trending");
         const trendingData     = await trendingResponse.json();
 
         if (trendingData.trending?.length > 0) {
-          // Use YouTube trending songs — search iTunes for each
+          setTrendingList(trendingData.trending.slice(0, 25));
           const { searchTrack } = await import("@/lib/itunes");
-          // Try each song — use cleanTitle only if full query fails
           const results = await Promise.all(
             trendingData.trending
-              .slice(0, 15) // Try more songs to get 8 valid ones
-              .map((song: any, i: number) => searchTrack(song.cleanTitle, i))
+              .slice(0, 20)
+              .map((song: any, i: number) => searchTrack(song.searchQuery, i))
           );
           const validHooks = results.filter((t): t is Track => t !== null);
-          
           if (validHooks.length >= 3) {
-            setHooks(validHooks.slice(0, 8));
+            setHooks(validHooks.slice(0, 12));
             setLoading(false);
             return;
           }
         }
       } catch {
-        // YouTube failed — fall back to manual list
+        // iTunes RSS failed — fall back to manual list
       }
 
       // Fallback to manual list
@@ -118,12 +120,19 @@ export default function HomePage() {
           .order("created_at", { ascending: false });
         if (savedFull) setSavedHooksFull(savedFull);
 
-        // Total play count for profile
-        const { count: playsCount } = await supabase
+        // Total play count + top artists for profile
+        const { count: playsCount, data: playsData } = await supabase
           .from("hook_plays")
-          .select("*", { count: "exact", head: true })
+          .select("artist", { count: "exact" })
           .eq("user_id", user.id);
         setTotalPlays(playsCount ?? 0);
+        if (playsData) {
+          const artistCounts: Record<string, number> = {};
+          playsData.forEach((p: any) => { if (p.artist) artistCounts[p.artist] = (artistCounts[p.artist] ?? 0) + 1; });
+          const sorted = Object.entries(artistCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([artist, plays]) => ({ artist, plays }));
+          setTopArtists(sorted);
+        }
+        setJoinedAt(user.created_at ?? "");
 
         const { data: playlistData } = await supabase
           .from("playlists").select("id, name").eq("user_id", user.id)
@@ -147,6 +156,13 @@ export default function HomePage() {
   }, []);
 
   // ── Sync loop + playlist refs ──────────────────────────────────
+  // ── Onboarding — show once per device ─────────────────────────
+  useEffect(() => {
+    if (!localStorage.getItem("hookify_seen")) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
   useEffect(() => { isLoopingRef.current = isLooping; }, [isLooping]);
   useEffect(() => { playlistTracksRef.current = playlistTracks; }, [playlistTracks]);
 
@@ -291,12 +307,21 @@ export default function HomePage() {
   // ── Share ──────────────────────────────────────────────────────
   const handleShare = async () => {
     if (!currentHook) return;
-    const text = `🎵 Check out the hook of "${currentHook.title}" by ${currentHook.artist} on Hookify!`;
+    const params = new URLSearchParams({
+      title:  currentHook.title,
+      artist: currentHook.artist,
+      art:    currentHook.albumArt,
+      url:    currentHook.previewUrl,
+      start:  String(currentHook.hookStart),
+      end:    String(currentHook.hookEnd),
+    });
+    const shareUrl = `${window.location.origin}/share/${currentHook.id}?${params.toString()}`;
+    const text = `🎵 "${currentHook.title}" by ${currentHook.artist} — just the hook on Hookify!`;
     if (navigator.share) {
-      await navigator.share({ title: "Hookify", text, url: window.location.href });
+      await navigator.share({ title: "Hookify Hook", text, url: shareUrl });
     } else {
-      await navigator.clipboard.writeText(text);
-      setShareToast("Link copied! 📤");
+      await navigator.clipboard.writeText(shareUrl);
+      setShareToast("Hook link copied! 📤");
       setTimeout(() => setShareToast(""), 2000);
     }
   };
@@ -497,6 +522,42 @@ const openPlaylistDetail = (playlist: Playlist) => {
 
   return (
     <main className="h-dvh bg-[#0a0e1a] text-white flex flex-col overflow-hidden">
+
+      {/* ── ONBOARDING OVERLAY ──────────────────────────────────── */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-end justify-center px-4 pb-10">
+          <div className="bg-[#0e2a3b] rounded-3xl p-7 w-full max-w-sm border border-[#90e0ef]/30 text-center shadow-[0_0_60px_rgba(144,224,239,0.2)]">
+            <div className="text-5xl mb-3">🐘</div>
+            <h1 className="text-2xl text-[#90e0ef] mb-2" style={{ fontFamily: "cursive" }}>Welcome to Hookify</h1>
+            <p className="text-gray-300 text-sm mb-5 leading-relaxed">
+              Just the <span className="text-[#90e0ef] font-bold">hook</span>. 15 seconds. The best part of every song — no fluff.
+            </p>
+            <div className="flex flex-col gap-2 text-sm text-gray-400 mb-6 text-left">
+              <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                <span className="text-xl">👆</span>
+                <span>Swipe left/right to discover hooks</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                <span className="text-xl">❤️</span>
+                <span>Save hooks you love</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                <span className="text-xl">🎵</span>
+                <span>Build playlists of your favourite hooks</span>
+              </div>
+              <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+                <span className="text-xl">🔥</span>
+                <span>See what's trending on iTunes charts</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { localStorage.setItem("hookify_seen", "1"); setShowOnboarding(false); }}
+              className="w-full py-3 rounded-full bg-[#90e0ef] text-[#0a0e1a] font-bold text-base hover:opacity-90 transition-all">
+              let's go 🎧
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── PLAYLIST PLAY MODE ──────────────────────────────────── */}
       {isPlaylistMode && playlistTracks.length > 0 && (() => {
@@ -852,35 +913,47 @@ const openPlaylistDetail = (playlist: Playlist) => {
         {/* ══ TRENDING TAB ════════════════════════════════════════ */}
         {activeTab === "trending" && (
           <div className="w-full max-w-2xl">
-            <h2 className="text-xl font-medium mb-6 text-center text-[#90e0ef]">🔥 viral this week</h2>
-            <div className="flex flex-col">
-              {hooks.map((hook, index) => (
-                <div key={hook.id}
-                  className="flex items-center gap-4 py-4 border-b border-white/5 cursor-pointer hover:bg-white/5 px-3 rounded-xl transition-all"
-                  onClick={() => { setCurrentIndex(index); setActiveTab("home"); }}>
-                  <span className="text-gray-600 text-sm w-5">{index + 1}</span>
-                  <img src={hook.albumArt} alt={hook.album} className="w-12 h-12 rounded-full object-cover border border-white/10" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{hook.title}</p>
-                    <p className="text-sm text-gray-400 truncate">{hook.artist}</p>
-                  </div>
-                  {(() => {
-                    const badges = [
-                      { label: "🔥 hot",    cls: "bg-red-500/15 text-red-400"         },
-                      { label: "⚡ viral",  cls: "bg-[#90e0ef]/15 text-[#90e0ef]"     },
-                      { label: "🚀 rising", cls: "bg-purple-500/15 text-purple-400"   },
-                      { label: "✨ new",    cls: "bg-green-500/15 text-green-400"      },
-                      { label: "💫 fresh",  cls: "bg-yellow-500/15 text-yellow-400"   },
-                    ];
-                    const b = badges[Math.min(index, badges.length - 1)];
-                    return (
-                      <span className={`text-xs px-3 py-1 rounded-full flex-shrink-0 ${b.cls}`}>
-                        {b.label}
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-medium text-[#90e0ef]">🔥 iTunes top charts</h2>
+              <span className="text-xs text-gray-500">updated daily</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              {/* Show real iTunes chart positions */}
+              {(trendingList.length > 0 ? trendingList : hooks.map((h) => ({ title: h.title, artist: h.artist, rank: hooks.indexOf(h) + 1 }))).map((song, index) => {
+                const matchedHook = hooks.find(
+                  (h) => h.title.toLowerCase().includes(song.title.toLowerCase().slice(0, 10)) ||
+                         song.title.toLowerCase().includes(h.title.toLowerCase().slice(0, 10))
+                );
+                const rank = index + 1;
+                const rankColor = rank === 1 ? "text-yellow-400" : rank === 2 ? "text-gray-300" : rank === 3 ? "text-orange-400" : "text-gray-600";
+                return (
+                  <div key={index}
+                    className={`flex items-center gap-4 py-3 px-3 rounded-xl transition-all border border-transparent ${matchedHook ? "cursor-pointer hover:bg-white/5 hover:border-white/10" : "opacity-60"}`}
+                    onClick={() => { if (matchedHook) { setCurrentIndex(hooks.indexOf(matchedHook)); setActiveTab("home"); } }}>
+                    {/* Rank number */}
+                    <span className={`text-sm font-bold w-6 text-center flex-shrink-0 ${rankColor}`}>
+                      {rank <= 3 ? ["🥇","🥈","🥉"][rank-1] : rank}
+                    </span>
+                    {/* Album art or placeholder */}
+                    {matchedHook ? (
+                      <img src={matchedHook.albumArt} alt="" className="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">🎵</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate text-sm">{song.title}</p>
+                      <p className="text-xs text-gray-400 truncate">{song.artist}</p>
+                    </div>
+                    {matchedHook && (
+                      <span className="text-xs text-[#90e0ef] bg-[#90e0ef]/10 px-2 py-1 rounded-full flex-shrink-0">
+                        ▶ play hook
                       </span>
-                    );
-                  })()}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1104,28 +1177,77 @@ const openPlaylistDetail = (playlist: Playlist) => {
         )}
         {/* ══ PROFILE TAB ═════════════════════════════════════════ */}
         {activeTab === "profile" && (
-          <div className="w-full max-w-2xl text-center">
-            <Image src="/Elephant_Beats.jpeg" alt="Profile" width={90} height={90}
-              className="rounded-full border-2 border-[#90e0ef] mx-auto mb-4 shadow-[0_0_20px_rgba(144,224,239,0.4)]" />
-            <h2 className="text-xl font-medium mb-1 truncate px-4">{userEmail || "hook listener"}</h2>
-            <p className="text-gray-500 text-sm mb-8">🎧 hook listener</p>
-            <div className="flex justify-center gap-8 mb-8">
-              <div>
-                <p className="text-2xl font-medium text-[#90e0ef]">{savedHooks.length}</p>
-                <p className="text-xs text-gray-400">saved</p>
+          <div className="w-full max-w-2xl">
+            {/* Avatar + name */}
+            <div className="text-center mb-6">
+              <Image src="/Elephant_Beats.jpeg" alt="Profile" width={80} height={80}
+                className="rounded-full border-2 border-[#90e0ef] mx-auto mb-3 shadow-[0_0_20px_rgba(144,224,239,0.4)]" />
+              <h2 className="text-lg font-medium truncate px-4">{userEmail || "hook listener"}</h2>
+              {joinedAt && (
+                <p className="text-gray-500 text-xs mt-1">
+                  member since {new Date(joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </p>
+              )}
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              {[
+                { label: "hooks saved",  value: savedHooks.length, icon: "❤️" },
+                { label: "total plays",  value: totalPlays,         icon: "▶️" },
+                { label: "playlists",    value: playlists.length,   icon: "🎵" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-white/5 rounded-2xl p-4 text-center border border-white/10">
+                  <p className="text-xl mb-1">{stat.icon}</p>
+                  <p className="text-2xl font-medium text-[#90e0ef]">{stat.value}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Top artists */}
+            {topArtists.length > 0 && (
+              <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-5">
+                <h3 className="text-sm font-medium text-[#90e0ef] mb-3">🎤 your top artists</h3>
+                <div className="flex flex-col gap-2">
+                  {topArtists.map((a, i) => (
+                    <div key={a.artist} className="flex items-center gap-3">
+                      <span className="text-xs text-gray-600 w-4 text-center">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm truncate">{a.artist}</span>
+                          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{a.plays} plays</span>
+                        </div>
+                        <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#90e0ef] rounded-full"
+                            style={{ width: `${Math.round((a.plays / (topArtists[0]?.plays || 1)) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* Hook listener badge */}
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-5 flex items-center gap-4">
+              <span className="text-3xl">🐘</span>
               <div>
-                <p className="text-2xl font-medium text-[#90e0ef]">{playlists.length}</p>
-                <p className="text-xs text-gray-400">playlists</p>
-              </div>
-              <div>
-                <p className="text-2xl font-medium text-[#90e0ef]">{totalPlays}</p>
-                <p className="text-xs text-gray-400">plays</p>
+                <p className="text-sm font-medium text-[#90e0ef]">
+                  {totalPlays >= 100 ? "Hook Addict 🔥" : totalPlays >= 50 ? "Hook Fan ⚡" : totalPlays >= 10 ? "Hook Explorer 🚀" : "Hook Newbie 🌱"}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {totalPlays >= 100 ? "you've played 100+ hooks — absolute legend" : totalPlays >= 50 ? "50+ plays — you know what's good" : totalPlays >= 10 ? "getting into it — 10+ plays" : "play some hooks to level up!"}
+                </p>
               </div>
             </div>
+
+            {/* Logout */}
             <button
               onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}
-              className="w-64 py-3 rounded-full border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all">
+              className="w-full py-3 rounded-full border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-all">
               logout
             </button>
           </div>
