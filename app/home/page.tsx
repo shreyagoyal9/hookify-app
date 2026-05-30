@@ -61,6 +61,16 @@ export default function HomePage() {
   const [previewAudio, setPreviewAudio]         = useState<HTMLAudioElement | null>(null);
   const [previewingTrackId, setPreviewingTrackId] = useState<number | null>(null);
 
+  // ── Feature: progress bar ──────────────────────────────────────
+  const [hookProgress, setHookProgress]         = useState(0); // 0–100%
+
+  // ── Feature: offline mode ──────────────────────────────────────
+  const [isOffline, setIsOffline]               = useState(false);
+
+  // ── Feature: total play counts ────────────────────────────────
+  // trackId → total play count from hook_plays table
+  const [totalPlayCounts, setTotalPlayCounts]   = useState<Record<number, number>>({});
+
   // ── Fetch songs from iTunes ────────────────────────────────────
   useEffect(() => {
     async function fetchHooks() {
@@ -82,7 +92,10 @@ export default function HomePage() {
 
           if (validHooks.length >= 3) {
             // Step 3: show feed immediately with fallback/cached timestamps
-            setHooks(validHooks.slice(0, 12));
+            const feedHooks = validHooks.slice(0, 12);
+            setHooks(feedHooks);
+            // Persist feed so offline mode can show it later
+            try { localStorage.setItem("hookify_feed_cache", JSON.stringify(feedHooks)); } catch {}
             setLoading(false);
 
             // Step 4: run AI detection in background, update timestamps silently
@@ -107,10 +120,22 @@ export default function HomePage() {
       }
 
       // Fallback: manual list, also show fast then detect in background
-      const validHooks = await Promise.all(
-        (await import("@/lib/itunes")).TRENDING_SONGS.map((q, i) => searchTrackFast(q, i))
-      ).then((r) => r.filter((t): t is Track => t !== null));
+      let validHooks: Track[] = [];
+      try {
+        validHooks = await Promise.all(
+          (await import("@/lib/itunes")).TRENDING_SONGS.map((q, i) => searchTrackFast(q, i))
+        ).then((r) => r.filter((t): t is Track => t !== null));
+      } catch {
+        // Truly offline — load from localStorage cache if available
+        try {
+          const cached = localStorage.getItem("hookify_feed_cache");
+          if (cached) { validHooks = JSON.parse(cached); setIsOffline(true); }
+        } catch {}
+      }
       setHooks(validHooks);
+      if (!isOffline && validHooks.length > 0) {
+        try { localStorage.setItem("hookify_feed_cache", JSON.stringify(validHooks)); } catch {}
+      }
       setLoading(false);
 
       validHooks.forEach((track) => {
@@ -188,6 +213,25 @@ export default function HomePage() {
     getUser();
   }, []);
 
+  // ── Fetch total play counts for all tracks ────────────────────
+  // Runs after hooks load so we can show "▶ X plays" on each card
+  useEffect(() => {
+    if (hooks.length === 0) return;
+    async function fetchPlayCounts() {
+      const { data } = await supabase
+        .from("hook_plays")
+        .select("track_id");
+      if (!data) return;
+      const counts: Record<number, number> = {};
+      data.forEach((p: any) => {
+        const id = Number(p.track_id);
+        counts[id] = (counts[id] ?? 0) + 1;
+      });
+      setTotalPlayCounts(counts);
+    }
+    fetchPlayCounts();
+  }, [hooks.length]);
+
   // ── Sync loop + playlist refs ──────────────────────────────────
   // ── Onboarding — show once per device ─────────────────────────
   useEffect(() => {
@@ -249,12 +293,19 @@ export default function HomePage() {
         audioRef.current = new Audio(currentHook.previewUrl);
         audioRef.current.currentTime = currentHook.hookStart;
         audioRef.current.ontimeupdate = () => {
-          if (audioRef.current && audioRef.current.currentTime >= currentHook.hookEnd) {
+          if (!audioRef.current) return;
+          // Update progress bar (0–100%)
+          const elapsed  = audioRef.current.currentTime - currentHook.hookStart;
+          const duration = currentHook.hookEnd - currentHook.hookStart;
+          setHookProgress(Math.min(100, Math.max(0, (elapsed / duration) * 100)));
+          // Stop or loop at hookEnd
+          if (audioRef.current.currentTime >= currentHook.hookEnd) {
             if (isLoopingRef.current) {
               audioRef.current.currentTime = currentHook.hookStart;
             } else {
               audioRef.current.pause();
               audioRef.current.currentTime = currentHook.hookStart;
+              setHookProgress(0);
               setIsPlaying(false);
               setIsVibing(false);
             }
@@ -289,6 +340,7 @@ export default function HomePage() {
       audioRef.current?.pause();
       setIsPlaying(false);
       setIsVibing(false);
+      setHookProgress(0);
       setDirection("left");
       setTimeout(() => { setCurrentIndex((p) => p + 1); setDirection(null); }, 300);
     }
@@ -300,6 +352,7 @@ export default function HomePage() {
       audioRef.current?.pause();
       setIsPlaying(false);
       setIsVibing(false);
+      setHookProgress(0);
       setDirection("right");
       setTimeout(() => { setCurrentIndex((p) => p - 1); setDirection(null); }, 300);
     }
@@ -749,6 +802,13 @@ const openPlaylistDetail = (playlist: Playlist) => {
         </div>
       </nav>
 
+      {/* ── OFFLINE BANNER ──────────────────────────────────────── */}
+      {isOffline && (
+        <div className="mx-4 mb-1 text-center text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 px-4 py-1.5 rounded-full">
+          📡 you're offline — showing cached hooks
+        </div>
+      )}
+
       {/* ── MAIN CONTENT ────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-start px-2 pt-2 pb-4 scroll-touch">
 
@@ -809,7 +869,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 </div>
 
                 {/* Stats */}
-                <div className="flex justify-center gap-4 sm:gap-6 mb-5">
+                <div className="flex justify-center gap-3 sm:gap-5 mb-5">
                   <div className="text-center">
                     <p className="text-xs text-gray-400 mb-1">hook</p>
                     <p className="text-sm sm:text-base text-[#90e0ef] font-medium">
@@ -818,8 +878,15 @@ const openPlaylistDetail = (playlist: Playlist) => {
                   </div>
                   <div className="w-px bg-white/10" />
                   <div className="text-center">
+                    <p className="text-xs text-gray-400 mb-1">plays</p>
+                    <p className="text-sm sm:text-base text-[#90e0ef] font-medium">
+                      🔥 {totalPlayCounts[currentHook.id] ?? 0}
+                    </p>
+                  </div>
+                  <div className="w-px bg-white/10" />
+                  <div className="text-center">
                     <p className="text-xs text-gray-400 mb-1">track</p>
-                    <p className="text-sm sm:text-base text-[#90e0ef] font-medium">#{currentIndex + 1} / {hooks.length}</p>
+                    <p className="text-sm sm:text-base text-[#90e0ef] font-medium">#{currentIndex + 1}/{hooks.length}</p>
                   </div>
                   <div className="w-px bg-white/10" />
                   <div className="text-center">
@@ -831,7 +898,7 @@ const openPlaylistDetail = (playlist: Playlist) => {
                 </div>
 
                 {/* Play button */}
-                <div className="flex justify-center mb-6">
+                <div className="flex justify-center mb-3">
                   <button onClick={togglePlay}
                     className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all duration-300 ${
                       isPlaying
@@ -840,6 +907,20 @@ const openPlaylistDetail = (playlist: Playlist) => {
                     }`}>
                     {isPlaying ? "⏸" : "▶"}
                   </button>
+                </div>
+
+                {/* Hook progress bar — visible while playing */}
+                <div className="w-full px-4 mb-5">
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#90e0ef] rounded-full"
+                      style={{ width: `${hookProgress}%`, transition: isPlaying ? "width 0.25s linear" : "none" }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-gray-600 mt-1 px-0.5">
+                    <span>{currentHook.hookStart}s</span>
+                    <span>{currentHook.hookEnd}s</span>
+                  </div>
                 </div>
 
                 {/* Action buttons */}
