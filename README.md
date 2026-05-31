@@ -119,30 +119,77 @@ The model runs on **FastAPI (Python)** deployed on Railway and is called automat
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                        USER                             │
-└────────────────────────┬────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│             Next.js 16 Frontend (Vercel)                │
-│                                                         │
-│  ┌──────────┐  ┌──────────┐  ┌───────────┐  ┌───────┐  │
-│  │  Login   │  │   Home   │  │  Search   │  │ Share │  │
-│  │  OAuth   │  │  Swipe   │  │  + Swipe  │  │  Page │  │
-│  └──────────┘  └──────────┘  └───────────┘  └───────┘  │
-└──────┬─────────────────┬──────────────────┬─────────────┘
-       │                 │                  │
-       ▼                 ▼                  ▼
-┌────────────┐   ┌───────────────┐  ┌──────────────────┐
-│  Supabase  │   │  iTunes API   │  │  Railway AI      │
-│            │   │               │  │  Server          │
-│  • auth    │   │  • song data  │  │                  │
-│  • saves   │   │  • 30s audio  │  │  Python+FastAPI  │
-│  • plays   │   │  • album art  │  │  librosa model   │
-│  • lists   │   │  • top charts │  │  ffmpeg convert  │
-└────────────┘   └───────────────┘  └──────────────────┘
+```mermaid
+flowchart TD
+    User(["👤 User\n(Browser / Mobile)"])
+
+    subgraph Vercel ["☁️ Vercel — Next.js 16 Frontend"]
+        direction TB
+        Login["🔐 /login\nEmail + Google OAuth"]
+        Home["🏠 /home\nSwipe Feed · Trending\nSaved · Playlists · Profile"]
+        Search["🔍 /search\nSearch any song\nSwipeable card view"]
+        Share["📤 /share/[trackId]\nPublic shareable hook\n(no login required)"]
+        Admin["🛡️ /admin\nAnalytics dashboard\n(password protected)"]
+
+        subgraph APIRoutes ["Next.js API Routes (CORS Proxy Layer)"]
+            AR1["/api/search\nproxies iTunes"]
+            AR2["/api/trending\nparses iTunes RSS"]
+            AR3["/api/detect-hook\nbridges to AI server"]
+            AR4["/api/admin-auth\npassword check"]
+        end
+    end
+
+    subgraph Supabase ["🟢 Supabase (PostgreSQL + Auth)"]
+        direction TB
+        Auth["Auth\nGoogle OAuth 2.0\nEmail/Password"]
+        DB["Database\nsaved_hooks\nhook_plays\nplaylists\nplaylist_tracks"]
+        RLS["Row Level Security\nUsers see only\ntheir own data"]
+        Auth --> RLS
+        DB --> RLS
+    end
+
+    subgraph iTunes ["🎵 Apple iTunes API"]
+        IT1["Search API\nSong metadata\n30s preview URL\nAlbum art"]
+        IT2["RSS Feed\nReal Top 25 chart\nUpdated daily"]
+    end
+
+    subgraph Railway ["🤖 Railway — Python AI Server"]
+        direction TB
+        FA["FastAPI + uvicorn\nREST endpoint\n/detect-hook"]
+        PY["detect_hook.py\nlibrosa audio analysis"]
+        FF["ffmpeg\n.m4a → .wav conversion"]
+        FA --> FF --> PY
+        PY --> FA
+    end
+
+    subgraph AIModel ["🧠 Hook Detection Algorithm"]
+        direction LR
+        E["RMS Energy\n35% weight\nloudness"]
+        C["Spectral Centroid\n20% weight\nbrightness"]
+        O["Onset Strength\n15% weight\nbeat density"]
+        S["Chroma Self-Similarity\n30% weight\nmelody repetition"]
+        Score["hookiness score\nSlide 15s window\nReturn peak window\n→ hook_start, hook_end"]
+        E & C & O & S --> Score
+    end
+
+    User -->|"visits app"| Vercel
+    Login -->|"OAuth + session token"| Auth
+    Home & Search -->|"fetch song data"| AR1 & AR2
+    AR1 & AR2 -->|"proxied requests"| iTunes
+    Home & Search -->|"request hook timestamps"| AR3
+    AR3 -->|"POST 30s preview URL"| FA
+    PY -->|"uses"| AIModel
+    Home & Search -->|"log plays, save hooks,\nload playlists"| DB
+    Share -->|"all data encoded in URL\n(no DB lookup)"| User
+    Admin -->|"verify password"| AR4
+    Admin -->|"read all stats"| DB
+
+    style Vercel fill:#0f1117,stroke:#90e0ef,color:#fff
+    style Supabase fill:#0f2e1a,stroke:#3ECF8E,color:#fff
+    style iTunes fill:#1a0f2e,stroke:#fc3c44,color:#fff
+    style Railway fill:#1a1a2e,stroke:#a855f7,color:#fff
+    style AIModel fill:#1a1500,stroke:#facc15,color:#fff
+    style APIRoutes fill:#0a0e1a,stroke:#90e0ef44,color:#ccc
 ```
 
 ---
