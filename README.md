@@ -121,54 +121,54 @@ The model runs on **FastAPI (Python)** deployed on Railway and is called automat
 
 ```mermaid
 flowchart TD
-    User(["👤 User\n(Browser / Mobile)"])
+    User(["👤 User<br/>(Browser / Mobile)"])
 
     subgraph Vercel ["☁️ Vercel — Next.js 16 Frontend"]
         direction TB
-        Login["🔐 /login\nEmail + Google OAuth"]
-        Home["🏠 /home\nSwipe Feed · Trending\nSaved · Playlists · Profile"]
-        Search["🔍 /search\nSearch any song\nSwipeable card view"]
-        Share["📤 /share/[trackId]\nPublic shareable hook\n(no login required)"]
-        Admin["🛡️ /admin\nAnalytics dashboard\n(password protected)"]
+        Login["🔐 /login<br/>Email + Google OAuth"]
+        Home["🏠 /home<br/>Swipe Feed · Trending<br/>Saved · Playlists · Profile"]
+        Search["🔍 /search<br/>Search any song<br/>Swipeable card view"]
+        Share["📤 /share/[trackId]<br/>Public shareable hook<br/>(no login required)"]
+        Admin["🛡️ /admin<br/>Analytics dashboard<br/>(password protected)"]
 
         subgraph APIRoutes ["Next.js API Routes (CORS Proxy Layer)"]
-            AR1["/api/search\nproxies iTunes"]
-            AR2["/api/trending\nparses iTunes RSS"]
-            AR3["/api/detect-hook\nbridges to AI server"]
-            AR4["/api/admin-auth\npassword check"]
+            AR1["/api/search<br/>proxies iTunes"]
+            AR2["/api/trending<br/>parses iTunes RSS"]
+            AR3["/api/detect-hook<br/>bridges to AI server"]
+            AR4["/api/admin-auth<br/>password check"]
         end
     end
 
     subgraph Supabase ["🟢 Supabase (PostgreSQL + Auth)"]
         direction TB
-        Auth["Auth\nGoogle OAuth 2.0\nEmail/Password"]
-        DB["Database\nsaved_hooks\nhook_plays\nplaylists\nplaylist_tracks"]
-        RLS["Row Level Security\nUsers see only\ntheir own data"]
+        Auth["Auth<br/>Google OAuth 2.0<br/>Email/Password"]
+        DB["Database<br/>saved_hooks<br/>hook_plays<br/>playlists<br/>playlist_tracks"]
+        RLS["Row Level Security<br/>Users see only<br/>their own data"]
         Auth --> RLS
         DB --> RLS
     end
 
     subgraph iTunes ["🎵 Apple iTunes API"]
-        IT1["Search API\nSong metadata\n30s preview URL\nAlbum art"]
-        IT2["RSS Feed\nReal Top 25 chart\nUpdated daily"]
+        IT1["Search API<br/>Song metadata<br/>30s preview URL<br/>Album art"]
+        IT2["RSS Feed<br/>Real Top 25 chart<br/>Updated daily"]
     end
 
     subgraph Railway ["🤖 Railway — Python AI Server"]
         direction TB
-        FA["FastAPI + uvicorn\nREST endpoint\n/detect-hook"]
-        PY["detect_hook.py\nlibrosa audio analysis"]
-        FF["ffmpeg\n.m4a → .wav conversion"]
+        FA["FastAPI + uvicorn<br/>REST endpoint<br/>/detect-hook"]
+        PY["detect_hook.py<br/>librosa audio analysis"]
+        FF["ffmpeg<br/>.m4a → .wav conversion"]
         FA --> FF --> PY
         PY --> FA
     end
 
     subgraph AIModel ["🧠 Hook Detection Algorithm"]
         direction LR
-        E["RMS Energy\n35% weight\nloudness"]
-        C["Spectral Centroid\n20% weight\nbrightness"]
-        O["Onset Strength\n15% weight\nbeat density"]
-        S["Chroma Self-Similarity\n30% weight\nmelody repetition"]
-        Score["hookiness score\nSlide 15s window\nReturn peak window\n→ hook_start, hook_end"]
+        E["RMS Energy<br/>35% weight<br/>loudness"]
+        C["Spectral Centroid<br/>20% weight<br/>brightness"]
+        O["Onset Strength<br/>15% weight<br/>beat density"]
+        S["Chroma Self-Similarity<br/>30% weight<br/>melody repetition"]
+        Score["hookiness score<br/>Slide 15s window<br/>Return peak window<br/>→ hook_start, hook_end"]
         E & C & O & S --> Score
     end
 
@@ -179,8 +179,8 @@ flowchart TD
     Home & Search -->|"request hook timestamps"| AR3
     AR3 -->|"POST 30s preview URL"| FA
     PY -->|"uses"| AIModel
-    Home & Search -->|"log plays, save hooks,\nload playlists"| DB
-    Share -->|"all data encoded in URL\n(no DB lookup)"| User
+    Home & Search -->|"log plays, save hooks,<br/>load playlists"| DB
+    Share -->|"all data encoded in URL<br/>(no DB lookup)"| User
     Admin -->|"verify password"| AR4
     Admin -->|"read all stats"| DB
 
