@@ -4,7 +4,7 @@
 
 <img src="public/Elephant_Beats.jpeg" alt="Hookify Logo" width="110" style="border-radius:50%"/>
 
-### *just the hook. 15 seconds. the best part.*
+### *"just the hook. 15 seconds. the best part."*
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-hookify--app--chi.vercel.app-90e0ef?style=for-the-badge&logo=vercel)](https://hookify-app-chi.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-shreyagoyal9-181717?style=for-the-badge&logo=github)](https://github.com/shreyagoyal9/hookify-app)
