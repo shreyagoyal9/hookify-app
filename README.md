@@ -1,4 +1,4 @@
-# 🐘 Hookify
+# 🐘 Hookify Music 
 
 <div align="center">
 
